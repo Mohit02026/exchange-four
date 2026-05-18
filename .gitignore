@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# phase context docs (local only, never pushed)
+_context/
+
+# planning & session docs (local only, never pushed)
+session.md
+issues.md
+handoff.md
+prerequisites.md
+CLAUDE.md
+architecture.md
+build-plan.md
+
+# local claude config
+.claude/
+
+/lib/generated/prisma
+
+# local file uploads (moved to Drive in Phase 8)
+/public/uploads/

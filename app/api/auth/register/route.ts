@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import bcrypt from 'bcryptjs'
+import { db } from '@/lib/db'
+
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  correspondenceEmail: z.string().email(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
+})
+
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.errors[0].message },
+      { status: 400 }
+    )
+  }
+
+  const { email, password, firstName, lastName, correspondenceEmail, phone, location } = parsed.data
+
+  const existing = await db.user.findUnique({ where: { email } })
+  if (existing) {
+    return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
+  }
+
+  const hashed = await bcrypt.hash(password, 12)
+
+  await db.user.create({
+    data: {
+      email,
+      password: hashed,
+      name: `${firstName} ${lastName}`,
+      role: 'APPLICANT',
+      applicant: {
+        create: {
+          firstName,
+          lastName,
+          correspondenceEmail,
+          phone: phone || null,
+          location: location || null,
+        },
+      },
+    },
+  })
+
+  return NextResponse.json({ ok: true }, { status: 201 })
+}

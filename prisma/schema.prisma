@@ -1,0 +1,399 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  APPLICANT
+  HR
+  EXECUTIVE
+}
+
+enum PositionStatus {
+  DRAFT
+  OPEN
+  PAUSED
+  FILLED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  CSW_GENERATED
+  SENT_TO_AVI
+  EXECUTIVE_APPROVED
+  EXECUTIVE_DISAPPROVED
+  INTERVIEW_SCHEDULED
+  START_DATE_REQUESTED
+  HIRED
+  REJECTED
+  FUTURE_PROSPECT
+}
+
+enum FileType {
+  CV
+  PHOTO
+  DOCUMENT
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum CSWStatus {
+  DRAFT
+  APPROVED
+  SENT
+}
+
+enum Decision {
+  APPROVED
+  DISAPPROVED
+}
+
+enum FolderType {
+  APPLICANT
+  EMPLOYEE
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETE
+}
+
+// ─── Users & Auth ────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(APPLICANT)
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applicant Applicant?
+  employee  Employee?
+  auditLogs AuditLog[]
+}
+
+// ─── Org Board ───────────────────────────────────────────────────────────────
+
+model OrgBoardUnit {
+  id        String         @id @default(cuid())
+  name      String
+  type      String
+  parentId  String?
+  parent    OrgBoardUnit?  @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children  OrgBoardUnit[] @relation("OrgHierarchy")
+  positions Position[]
+  createdAt DateTime       @default(now())
+}
+
+model Position {
+  id                   String         @id @default(cuid())
+  title                String
+  orgBoardUnitId       String?
+  orgBoardUnit         OrgBoardUnit?  @relation(fields: [orgBoardUnitId], references: [id])
+  status               PositionStatus @default(DRAFT)
+  purpose              String?
+  valuableFinalProduct String?
+  requiredSkills       String?
+  compensationRange    String?
+  employmentType       String?
+  location             String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  applications Application[]
+}
+
+// ─── Applicants ──────────────────────────────────────────────────────────────
+
+model Applicant {
+  id                  String        @id @default(cuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id])
+  firstName           String
+  lastName            String
+  correspondenceEmail String
+  phone               String?
+  location            String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  applications Application[]
+}
+
+model Application {
+  id                   String            @id @default(cuid())
+  reference            String            @unique
+  applicantId          String
+  applicant            Applicant         @relation(fields: [applicantId], references: [id])
+  positionId           String?
+  position             Position?         @relation(fields: [positionId], references: [id])
+  isGeneralApplication Boolean           @default(false)
+  status               ApplicationStatus @default(SUBMITTED)
+  bio                  String?
+  skills               String?
+  hobbies              String?
+  careerGoals          String?
+  whyExchangeFour      String?
+  performiaStatus      String?
+  reviewToken          String?           @unique
+  reviewTokenExpiry    DateTime?
+  submittedAt          DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  files           ApplicationFile[]
+  videos          ApplicantVideo[]
+  review          ApplicantReview?
+  performiaTest   PerformiaTest?
+  csw             CSWReport?
+  approvalRequest ApprovalRequest?
+  driveFolder     DriveFolder?
+  interviewEvent  InterviewEvent?
+  emailEvents     EmailEvent[]
+}
+
+model ApplicationFile {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  type          FileType
+  fileName      String
+  fileUrl       String
+  driveFileId   String?
+  uploadedAt    DateTime    @default(now())
+}
+
+model ApplicantVideo {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id])
+  url           String
+  type          String
+  driveFileId   String?
+  uploadedAt    DateTime    @default(now())
+}
+
+// ─── Review ──────────────────────────────────────────────────────────────────
+
+model ApplicantReview {
+  id            String       @id @default(cuid())
+  applicationId String       @unique
+  application   Application  @relation(fields: [applicationId], references: [id])
+  reviewerId    String
+  status        ReviewStatus @default(DRAFT)
+  notesForAvi   String?
+  privateNotes  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  sections ReviewSection[]
+  notes    Note[]
+}
+
+model ReviewSection {
+  id        String          @id @default(cuid())
+  reviewId  String
+  review    ApplicantReview @relation(fields: [reviewId], references: [id])
+  section   String
+  rating    String?
+  notes     String?
+  updatedAt DateTime        @updatedAt
+}
+
+model Note {
+  id        String          @id @default(cuid())
+  reviewId  String
+  review    ApplicantReview @relation(fields: [reviewId], references: [id])
+  content   String
+  authorId  String
+  createdAt DateTime        @default(now())
+}
+
+// ─── Performia ───────────────────────────────────────────────────────────────
+
+model PerformiaTest {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  status        String      @default("PENDING")
+  testCode      String?
+  resultUrl     String?
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+}
+
+// ─── CSW ─────────────────────────────────────────────────────────────────────
+
+model CSWReport {
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  status        CSWStatus   @default(DRAFT)
+  content       String
+  sourceFields  Json        @default("{}")
+  missingFields Json        @default("[]")
+  approvedAt    DateTime?
+  approvedById  String?
+  driveFileId   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// ─── Approvals ───────────────────────────────────────────────────────────────
+
+model ApprovalRequest {
+  id            String            @id @default(cuid())
+  applicationId String            @unique
+  application   Application       @relation(fields: [applicationId], references: [id])
+  token         String            @unique
+  tokenExpiry   DateTime
+  tokenUsed     Boolean           @default(false)
+  sentAt        DateTime          @default(now())
+
+  decision ApprovalDecision?
+}
+
+model ApprovalDecision {
+  id                String          @id @default(cuid())
+  approvalRequestId String          @unique
+  approvalRequest   ApprovalRequest @relation(fields: [approvalRequestId], references: [id])
+  decision          Decision
+  reason            String?
+  notes             String?
+  decidedAt         DateTime        @default(now())
+}
+
+// ─── Interviews ──────────────────────────────────────────────────────────────
+
+model InterviewEvent {
+  id              String      @id @default(cuid())
+  applicationId   String      @unique
+  application     Application @relation(fields: [applicationId], references: [id])
+  calendlyEventId String?
+  scheduledAt     DateTime?
+  inviteSentAt    DateTime?
+  createdAt       DateTime    @default(now())
+
+  survey InterviewSurvey?
+}
+
+model InterviewSurvey {
+  id               String         @id @default(cuid())
+  interviewEventId String         @unique
+  interviewEvent   InterviewEvent @relation(fields: [interviewEventId], references: [id])
+  howDidItGo       String?
+  stillInterested  Boolean?
+  whatWasClear     String?
+  whatWasUnclear   String?
+  openQuestions    String?
+  excitementScore  Int?
+  anythingElse     String?
+  driveFileId      String?
+  submittedAt      DateTime       @default(now())
+}
+
+// ─── Drive ───────────────────────────────────────────────────────────────────
+
+model DriveFolder {
+  id            String       @id @default(cuid())
+  applicationId String?      @unique
+  application   Application? @relation(fields: [applicationId], references: [id])
+  employeeId    String?      @unique
+  folderId      String
+  folderUrl     String
+  type          FolderType
+  createdAt     DateTime     @default(now())
+}
+
+// ─── Employees & Onboarding ──────────────────────────────────────────────────
+
+model Employee {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  applicationId  String?   @unique
+  firstName      String
+  lastName       String
+  positionId     String?
+  startDate      DateTime?
+  slackUserId    String?
+  slackInvitedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  onboardingPlan OnboardingPlan?
+}
+
+model OnboardingPlan {
+  id             String    @id @default(cuid())
+  employeeId     String    @unique
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+  ndaSigned      Boolean   @default(false)
+  contractSigned Boolean   @default(false)
+  policiesRead   Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tasks OnboardingTask[]
+}
+
+model OnboardingTask {
+  id             String         @id @default(cuid())
+  planId         String
+  plan           OnboardingPlan @relation(fields: [planId], references: [id])
+  title          String
+  description    String?
+  dueDay         Int?
+  status         TaskStatus     @default(PENDING)
+  completedAt    DateTime?
+  slackMessageId String?
+  createdAt      DateTime       @default(now())
+}
+
+// ─── Events & Audit ──────────────────────────────────────────────────────────
+
+model EmailEvent {
+  id            String       @id @default(cuid())
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+  type          String
+  to            String
+  subject       String
+  resendId      String?
+  sentAt        DateTime     @default(now())
+}
+
+model SlackEvent {
+  id         String   @id @default(cuid())
+  employeeId String?
+  type       String
+  channel    String?
+  messageId  String?
+  payload    Json?
+  sentAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+}
