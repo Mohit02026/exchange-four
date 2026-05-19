@@ -1,10 +1,11 @@
 import 'dotenv/config'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../lib/generated/prisma/client'
 
-const db = new PrismaClient()
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const db = new PrismaClient({ adapter })
 
 async function main() {
-  // Open position
   const pos = await db.position.create({
     data: {
       title: 'Operations Coordinator',

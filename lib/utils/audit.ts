@@ -5,7 +5,7 @@ interface AuditParams {
   entityType: string
   entityId: string
   userId?: string
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, string | number | boolean | null>
 }
 
 export async function writeAuditLog(params: AuditParams): Promise<void> {

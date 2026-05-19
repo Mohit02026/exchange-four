@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { generateReference, saveUpload, createApplication } from '@/lib/services/applications'
+import { generateReviewToken } from '@/lib/utils/tokens'
+import { writeAuditLog } from '@/lib/utils/audit'
+import { sendApplicantConfirmation, sendNicolaNotification } from '@/lib/integrations/email'
+import { getApplicationQueue } from '@/lib/services/reviews'
+
+export async function GET() {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role !== 'HR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const queue = await getApplicationQueue()
+  return NextResponse.json(queue)
+}
 
 const CV_TYPES = new Set([
   'application/pdf',
@@ -56,12 +68,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Video must be MP4 or MOV' }, { status: 400 })
   }
 
+  let positionTitle: string | null = null
   if (positionId) {
     const pos = await db.position.findFirst({ where: { id: positionId, status: 'OPEN' } })
     if (!pos) return NextResponse.json({ error: 'Position not found or not open' }, { status: 400 })
+    positionTitle = pos.title
   }
 
-  const reference = generateReference()
+  const reference = await generateReference()
 
   const [cvUrl, photoUrl, videoUrl] = await Promise.all([
     saveUpload(cv, reference, 'cv'),
@@ -85,6 +99,51 @@ export async function POST(req: NextRequest) {
     videoUrl,
     videoName: video.name,
   })
+
+  const applicantName = `${applicant.firstName} ${applicant.lastName}`
+  const reviewToken = await generateReviewToken(application.id)
+
+  const [applicantEmailId, nicolaEmailId] = await Promise.all([
+    sendApplicantConfirmation({
+      to: applicant.correspondenceEmail,
+      name: applicantName,
+      reference: application.reference,
+    }),
+    sendNicolaNotification({
+      applicantName,
+      reference: application.reference,
+      positionTitle,
+      reviewToken,
+    }),
+  ])
+
+  await Promise.all([
+    writeAuditLog({
+      action: 'APPLICATION_SUBMITTED',
+      entityType: 'Application',
+      entityId: application.id,
+      userId: session.user.id,
+      metadata: { reference: application.reference },
+    }),
+    db.emailEvent.createMany({
+      data: [
+        {
+          applicationId: application.id,
+          type: 'APPLICANT_CONFIRMATION',
+          to: applicant.correspondenceEmail,
+          subject: `Exchange Four Application Received - ${application.reference}`,
+          resendId: applicantEmailId,
+        },
+        {
+          applicationId: application.id,
+          type: 'NICOLA_NOTIFICATION',
+          to: 'nicola@exchangefour.com',
+          subject: `New Application — ${applicantName} — ${application.reference}`,
+          resendId: nicolaEmailId,
+        },
+      ],
+    }),
+  ])
 
   return NextResponse.json({ reference: application.reference }, { status: 201 })
 }

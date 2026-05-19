@@ -1,12 +1,7 @@
-import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { db } from '@/lib/db'
-
-export function generateReference(): string {
-  const hex = crypto.randomBytes(3).toString('hex').toUpperCase()
-  return `EF-HR-APP-2026-${hex}`
-}
+export { generateApplicationReference as generateReference } from '@/lib/utils/references'
 
 export async function saveUpload(file: File, reference: string, label: string): Promise<string> {
   const dir = path.join(process.cwd(), 'public', 'uploads', reference)
