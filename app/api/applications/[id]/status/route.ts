@@ -1,38 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
-import { upsertReview } from '@/lib/services/reviews'
+import { setApplicationStatus } from '@/lib/services/reviews'
 import { writeAuditLog } from '@/lib/utils/audit'
 
-const sectionSchema = z.object({
-  section: z.string(),
-  rating: z.enum(['Yes', 'No', 'Maybe']).nullable(),
-  notes: z.string().nullable(),
-})
-
 const schema = z.object({
-  applicationId: z.string(),
-  sections: z.array(sectionSchema),
-  notesForAvi: z.string().nullable(),
-  privateNotes: z.string().nullable(),
+  status: z.enum(['UNDER_REVIEW', 'REJECTED', 'FUTURE_PROSPECT']),
 })
 
-export async function POST(req: NextRequest) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'HR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const { id } = await params
   const parsed = schema.safeParse(await req.json())
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
-  const review = await upsertReview({ ...parsed.data, reviewerId: session.user.id })
-
+  await setApplicationStatus(id, parsed.data.status)
   await writeAuditLog({
-    action: 'REVIEW_SAVED',
+    action: `STATUS_${parsed.data.status}`,
     entityType: 'Application',
-    entityId: parsed.data.applicationId,
+    entityId: id,
     userId: session.user.id,
   })
 
-  return NextResponse.json({ id: review.id }, { status: 200 })
+  return NextResponse.json({ ok: true })
 }
