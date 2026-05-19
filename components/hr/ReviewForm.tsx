@@ -13,6 +13,7 @@ const REVIEW_SECTIONS = [
   'Skills Match',
   'Communication Impression',
   'Immediate Qualifications',
+  'Position Fit',
   'Outpoints / Red Flags',
   'Strengths',
   'Missing Data',
@@ -95,6 +96,26 @@ export default function ReviewForm({ application }: { application: ApplicationDa
       setMessage('Error saving draft.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function generateCSW() {
+    setActionLoading('CSW')
+    setMessage('')
+    try {
+      await saveDraft()
+      const res = await fetch('/api/csw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId: application.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'CSW generation failed')
+      router.push(`/hr/csw/${data.id}`)
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Error generating CSW.')
+    } finally {
+      setActionLoading('')
     }
   }
 
@@ -211,8 +232,8 @@ export default function ReviewForm({ application }: { application: ApplicationDa
           <ActionBtn onClick={() => updateStatus('REJECTED')} disabled={!!actionLoading || isRejected} danger>
             {actionLoading === 'REJECTED' ? 'Rejecting...' : 'Reject Applicant'}
           </ActionBtn>
-          <ActionBtn onClick={() => {}} disabled title="Coming in Phase 5">
-            Generate CSW
+          <ActionBtn onClick={generateCSW} disabled={!!actionLoading} accent>
+            {actionLoading === 'CSW' ? 'Generating...' : 'Generate CSW'}
           </ActionBtn>
           <ActionBtn onClick={() => {}} disabled title="Coming in Phase 6">
             Send to Avi
@@ -264,14 +285,17 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function ActionBtn({ children, onClick, disabled, primary, danger, title }: {
+function ActionBtn({ children, onClick, disabled, primary, danger, accent, title }: {
   children: React.ReactNode
   onClick: () => void
   disabled?: boolean
   primary?: boolean
   danger?: boolean
+  accent?: boolean
   title?: string
 }) {
+  const bg = primary ? '#111' : danger ? '#dc2626' : accent ? '#2563eb' : '#e5e7eb'
+  const color = primary || danger || accent ? '#fff' : '#374151'
   return (
     <button
       onClick={onClick}
@@ -285,8 +309,8 @@ function ActionBtn({ children, onClick, disabled, primary, danger, title }: {
         fontWeight: 600,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        background: primary ? '#111' : danger ? '#dc2626' : '#e5e7eb',
-        color: primary || danger ? '#fff' : '#374151',
+        background: bg,
+        color,
       }}
     >
       {children}

@@ -9,6 +9,7 @@ export const REVIEW_SECTIONS = [
   'Skills Match',
   'Communication Impression',
   'Immediate Qualifications',
+  'Position Fit',
   'Outpoints / Red Flags',
   'Strengths',
   'Missing Data',
