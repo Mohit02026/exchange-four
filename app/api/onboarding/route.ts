@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { createEmployee, getEmployeeByApplication } from '@/lib/services/onboarding'
 import { sendOfferLetter } from '@/lib/integrations/email'
+import { notifyEmployeeHired } from '@/lib/integrations/slack'
 
 const bodySchema = z.object({
   applicationId: z.string().min(1),
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
     positionTitle: application.position?.title ?? null,
     startDate: startDateFormatted,
   }).catch((err) => console.error('[Offer letter email error]', err))
+
+  notifyEmployeeHired({
+    name: `${application.applicant.firstName} ${application.applicant.lastName}`,
+    reference: application.reference,
+    positionTitle: application.position?.title ?? null,
+    employeeId: employee.id,
+  }).catch(() => null)
 
   return NextResponse.json({ employeeId: employee.id }, { status: 201 })
 }

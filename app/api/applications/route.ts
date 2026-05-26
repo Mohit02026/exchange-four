@@ -5,6 +5,7 @@ import { generateReference, saveUpload, createApplication } from '@/lib/services
 import { generateReviewToken } from '@/lib/utils/tokens'
 import { writeAuditLog } from '@/lib/utils/audit'
 import { sendApplicantConfirmation, sendNicolaNotification } from '@/lib/integrations/email'
+import { notifyApplicationSubmitted } from '@/lib/integrations/slack'
 import { getApplicationQueue } from '@/lib/services/reviews'
 import { createApplicantFolder, uploadFileToDrive, deleteLocalUploads, mimeTypeForFile } from '@/lib/services/drive'
 
@@ -146,6 +147,13 @@ export async function POST(req: NextRequest) {
       ],
     }),
   ])
+
+  // Slack notification (non-fatal)
+  notifyApplicationSubmitted({
+    applicantName: applicantName,
+    reference: application.reference,
+    positionTitle,
+  }).catch(() => null)
 
   // Upload files to Google Drive (non-fatal — submission succeeds even if Drive is not configured)
   try {

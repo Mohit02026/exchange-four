@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { z } from 'zod'
 import { finalApprove, finalReject, keepWarm } from '@/lib/services/approvals'
 import { sendApplicantApproved, sendApplicantRejected, sendInterviewInvite } from '@/lib/integrations/email'
+import { notifyFinalDecision } from '@/lib/integrations/slack'
 import { createInterviewInvite } from '@/lib/services/interviews'
 import { db } from '@/lib/db'
 
@@ -97,6 +98,21 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: msg }, { status: 422 })
   }
+
+  // Derive name/reference for Slack — best-effort, errors are non-fatal
+  try {
+    const app = await db.application.findUnique({
+      where: { id: applicationId },
+      select: { reference: true, applicant: { select: { firstName: true, lastName: true } } },
+    })
+    if (app) {
+      notifyFinalDecision({
+        applicantName: `${app.applicant.firstName} ${app.applicant.lastName}`,
+        reference: app.reference,
+        decision,
+      }).catch(() => null)
+    }
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({ success: true })
 }

@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { getApprovalByToken, recordTokenOpen, submitAviDecision } from '@/lib/services/approvals'
 import { sendNicolaAviDecision } from '@/lib/integrations/email'
+import { notifyAviDecision } from '@/lib/integrations/slack'
 import { db } from '@/lib/db'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
@@ -104,6 +105,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       resendId: emailId,
     },
   })
+
+  notifyAviDecision({
+    applicantName: result.applicantName,
+    reference: result.reference,
+    decision,
+    reason: reason ?? null,
+  }).catch(() => null)
 
   return NextResponse.json({ success: true })
 }

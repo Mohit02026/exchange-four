@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { approveAndSend } from '@/lib/services/csw'
 import { sendAviCSW } from '@/lib/integrations/email'
+import { notifyCSWSentToAvi } from '@/lib/integrations/slack'
 import { db } from '@/lib/db'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,6 +25,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         resendId: emailId,
       },
     })
+
+    notifyCSWSentToAvi({ applicantName, reference, positionTitle }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

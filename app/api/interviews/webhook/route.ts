@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { recordInterviewScheduled } from '@/lib/services/interviews'
 import { sendInterviewConfirmation } from '@/lib/integrations/email'
+import { notifyInterviewScheduled } from '@/lib/integrations/slack'
 
 // Verify Calendly webhook signature.
 function verifySignature(body: string, signature: string, secret: string): boolean {
@@ -96,6 +97,12 @@ export async function POST(req: NextRequest) {
       toNicola: true,
     }).catch(() => null),
   ])
+
+  notifyInterviewScheduled({
+    applicantName,
+    reference: application.reference,
+    scheduledAt,
+  }).catch(() => null)
 
   return NextResponse.json({ received: true })
 }
