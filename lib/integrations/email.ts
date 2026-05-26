@@ -4,6 +4,11 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = `Exchange Four Personnel Desk <${process.env.RESEND_FROM_EMAIL ?? 'noreply@hr.exchangefour.com'}>`
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
+// When set, all emails are redirected to this address — use during local testing
+function to(address: string): string {
+  return process.env.TEST_EMAIL_OVERRIDE || address
+}
+
 export async function sendApplicantConfirmation(params: {
   to: string
   name: string
@@ -11,7 +16,7 @@ export async function sendApplicantConfirmation(params: {
 }): Promise<string | null> {
   const { data, error } = await resend.emails.send({
     from: FROM,
-    to: params.to,
+    to: to(params.to),
     subject: `Exchange Four Application Received - ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -40,7 +45,7 @@ export async function sendNicolaNotification(params: {
 
   const { data, error } = await resend.emails.send({
     from: FROM,
-    to: 'nicola@exchangefour.com',
+    to: to('nicola@exchangefour.com'),
     subject: `New Application — ${params.applicantName} — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -77,7 +82,7 @@ export async function sendAviCSW(params: {
 
   const { data, error } = await resend.emails.send({
     from: FROM,
-    to: 'avi@exchangefour.com',
+    to: to('avi@exchangefour.com'),
     subject: `CSW Ready for Review — ${params.applicantName} — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -121,7 +126,7 @@ export async function sendNicolaAviDecision(params: {
 
   const { data, error } = await resend.emails.send({
     from: FROM,
-    to: 'nicola@exchangefour.com',
+    to: to('nicola@exchangefour.com'),
     subject,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -142,5 +147,59 @@ export async function sendNicolaAviDecision(params: {
     `,
   })
   if (error) throw new Error(`Resend error (Nicola decision): ${error.message}`)
+  return data?.id ?? null
+}
+
+export async function sendApplicantApproved(params: {
+  to: string
+  name: string
+  reference: string
+  positionTitle: string | null
+}): Promise<string | null> {
+  const positionLabel = params.positionTitle ?? 'General Application'
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to(params.to),
+    subject: `Congratulations — Exchange Four Application Update`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>We'd Like to Move Forward</h2>
+        <p>Dear ${params.name},</p>
+        <p>We are pleased to inform you that we would like to move forward with your application for <strong>${positionLabel}</strong> at Exchange Four.</p>
+        <p>Please reply to this email with your proposed start date so we can proceed with the next steps.</p>
+        <p><strong>Reference:</strong> ${params.reference}</p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (applicant approved): ${error.message}`)
+  return data?.id ?? null
+}
+
+export async function sendApplicantRejected(params: {
+  to: string
+  name: string
+  reference: string
+  positionTitle: string | null
+}): Promise<string | null> {
+  const positionLabel = params.positionTitle ?? 'the position'
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to(params.to),
+    subject: `Exchange Four Application Update — ${params.reference}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Application Update</h2>
+        <p>Dear ${params.name},</p>
+        <p>Thank you for your time and interest in ${positionLabel} at Exchange Four. After careful consideration, we have decided not to move forward with your application at this time.</p>
+        <p>We genuinely appreciate the effort you put into your application and wish you every success in your career.</p>
+        <p><strong>Reference:</strong> ${params.reference}</p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (applicant rejected): ${error.message}`)
   return data?.id ?? null
 }

@@ -235,9 +235,11 @@ export default function ReviewForm({ application }: { application: ApplicationDa
           <ActionBtn onClick={generateCSW} disabled={!!actionLoading} accent>
             {actionLoading === 'CSW' ? 'Generating...' : 'Generate CSW'}
           </ActionBtn>
-          <ActionBtn onClick={() => {}} disabled title="Coming in Phase 6">
-            Send to Avi
-          </ActionBtn>
+          {(application.status === 'EXECUTIVE_APPROVED' || application.status === 'EXECUTIVE_DISAPPROVED') && (
+            <ActionBtn onClick={() => router.push(`/hr/applications/${application.id}/final`)} accent>
+              Final Decision →
+            </ActionBtn>
+          )}
         </div>
       </div>
     </div>

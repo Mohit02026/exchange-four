@@ -8,7 +8,7 @@ import Link from 'next/link'
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const registered = searchParams.get('registered') === 'true'
+  const registered = searchParams?.get('registered') === 'true'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

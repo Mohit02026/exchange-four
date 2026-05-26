@@ -14,11 +14,6 @@ export default auth((req: NextAuthRequest) => {
     if (session.user.role !== 'HR') return NextResponse.redirect(new URL('/', req.url))
   }
 
-  if (pathname.startsWith('/approve')) {
-    if (!session?.user) return NextResponse.redirect(new URL('/login', req.url))
-    if (session.user.role !== 'EXECUTIVE') return NextResponse.redirect(new URL('/', req.url))
-  }
-
   if (pathname.startsWith('/onboarding')) {
     if (!session?.user) return NextResponse.redirect(new URL('/login', req.url))
   }
@@ -29,5 +24,5 @@ export default auth((req: NextAuthRequest) => {
 })
 
 export const config = {
-  matcher: ['/hr/:path*', '/approve/:path*', '/onboarding/:path*', '/apply', '/status'],
+  matcher: ['/hr/:path*', '/onboarding/:path*', '/apply', '/status'],
 }

@@ -60,3 +60,6 @@ build-plan.md
 
 # local file uploads (moved to Drive in Phase 8)
 /public/uploads/
+
+# daily reports (local only, never pushed)
+/reports/

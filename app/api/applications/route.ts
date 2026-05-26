@@ -24,6 +24,7 @@ const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const VIDEO_TYPES = new Set(['video/mp4', 'video/quicktime'])
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'APPLICANT') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -146,4 +147,9 @@ export async function POST(req: NextRequest) {
   ])
 
   return NextResponse.json({ reference: application.reference }, { status: 201 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Internal server error'
+    console.error('[POST /api/applications]', err)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
