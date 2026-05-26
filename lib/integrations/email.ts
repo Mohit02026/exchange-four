@@ -203,3 +203,75 @@ export async function sendApplicantRejected(params: {
   if (error) throw new Error(`Resend error (applicant rejected): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendInterviewInvite(params: {
+  to: string
+  name: string
+  reference: string
+  calendlyUrl: string
+}): Promise<string | null> {
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to(params.to),
+    subject: `Interview Invitation — Exchange Four — ${params.reference}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>You're Invited to Interview</h2>
+        <p>Dear ${params.name},</p>
+        <p>We are pleased to invite you to an interview for your application <strong>${params.reference}</strong>.</p>
+        <p>Please use the link below to select a time that works for you:</p>
+        <p style="margin-top:24px">
+          <a href="${params.calendlyUrl}" style="background:#1a1a1a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">
+            Schedule Your Interview
+          </a>
+        </p>
+        <p style="margin-top:16px;font-size:13px;color:#666">
+          If the button does not work, copy this link: ${params.calendlyUrl}
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (interview invite): ${error.message}`)
+  return data?.id ?? null
+}
+
+export async function sendInterviewConfirmation(params: {
+  to: string
+  name: string
+  reference: string
+  scheduledAt: Date
+  toNicola?: boolean
+}): Promise<string | null> {
+  const dateStr = params.scheduledAt.toLocaleString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  })
+  const subject = params.toNicola
+    ? `Interview Booked — ${params.name} — ${params.reference}`
+    : `Interview Confirmed — Exchange Four — ${params.reference}`
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to(params.to),
+    subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>${params.toNicola ? 'Interview Booked' : 'Interview Confirmed'}</h2>
+        <p>${params.toNicola ? `${params.name} has scheduled their interview.` : `Dear ${params.name}, your interview has been confirmed.`}</p>
+        <p><strong>Reference:</strong> ${params.reference}</p>
+        <p><strong>Scheduled:</strong> ${dateStr}</p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (interview confirmation): ${error.message}`)
+  return data?.id ?? null
+}

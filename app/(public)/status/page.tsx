@@ -28,7 +28,10 @@ export default async function StatusPage() {
 
   const application = await db.application.findFirst({
     where: { applicantId: applicant.id },
-    include: { position: { select: { title: true } } },
+    include: {
+      position: { select: { title: true } },
+      interviewEvent: true,
+    },
     orderBy: { submittedAt: 'desc' },
   })
 
@@ -66,6 +69,38 @@ export default async function StatusPage() {
               {STATUS_LABELS[application.status as ApplicationStatus] ?? application.status}
             </span>
           </div>
+
+          {/* Show interview scheduling link when approved and awaiting booking */}
+          {application.status === 'START_DATE_REQUESTED' && !application.interviewEvent?.scheduledAt && process.env.CALENDLY_EVENT_URL && (
+            <div className="px-6 py-5 bg-gray-50">
+              <p className="text-sm text-gray-700 mb-3">
+                Congratulations on moving forward! Please use the link below to schedule your interview.
+              </p>
+              <a
+                href={process.env.CALENDLY_EVENT_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+              >
+                Schedule Your Interview →
+              </a>
+            </div>
+          )}
+
+          {/* Show scheduled interview time once booked */}
+          {application.interviewEvent?.scheduledAt && (
+            <Row
+              label="Interview"
+              value={new Date(application.interviewEvent.scheduledAt).toLocaleString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            />
+          )}
         </div>
       )}
     </main>

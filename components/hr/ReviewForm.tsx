@@ -43,6 +43,7 @@ type ApplicationData = {
   files: { id: string; type: string; fileName: string; fileUrl: string; driveFileId: string | null }[]
   videos: { id: string; url: string; driveFileId: string | null }[]
   driveFolder: { folderId: string; folderUrl: string } | null
+  interviewEvent: { scheduledAt: Date | null; inviteSentAt: Date | null } | null
   review: {
     id: string
     notesForAvi: string | null
@@ -171,6 +172,20 @@ export default function ReviewForm({ application }: { application: ApplicationDa
             <a href={application.driveFolder.folderUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb' }}>
               Open Applicant Folder ↗
             </a>
+          </Section>
+        )}
+
+        {application.interviewEvent && (
+          <Section label="Interview">
+            {application.interviewEvent.scheduledAt ? (
+              <span style={{ fontSize: 13, color: '#059669', fontWeight: 500 }}>
+                Scheduled — {new Date(application.interviewEvent.scheduledAt).toLocaleString('en-GB', {
+                  day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                })}
+              </span>
+            ) : application.interviewEvent.inviteSentAt ? (
+              <span style={{ fontSize: 13, color: '#6b7280' }}>Invite sent — awaiting booking</span>
+            ) : null}
           </Section>
         )}
 

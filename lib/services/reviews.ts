@@ -42,6 +42,7 @@ export async function getApplicationById(id: string) {
       files: true,
       videos: true,
       driveFolder: true,
+      interviewEvent: true,
       review: { include: { sections: true } },
     },
   })

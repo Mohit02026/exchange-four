@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
 import { finalApprove, finalReject, keepWarm } from '@/lib/services/approvals'
-import { sendApplicantApproved, sendApplicantRejected } from '@/lib/integrations/email'
+import { sendApplicantApproved, sendApplicantRejected, sendInterviewInvite } from '@/lib/integrations/email'
+import { createInterviewInvite } from '@/lib/services/interviews'
 import { db } from '@/lib/db'
 
 const bodySchema = z.object({
@@ -30,21 +31,48 @@ export async function POST(req: Request) {
   try {
     if (decision === 'approved') {
       const result = await finalApprove(applicationId, userId)
-      const emailId = await sendApplicantApproved({
-        to: result.applicantEmail,
-        name: result.applicantName,
-        reference: result.reference,
-        positionTitle: null,
-      }).catch(() => null)
-      await db.emailEvent.create({
-        data: {
-          applicationId,
-          type: 'APPLICANT_APPROVED',
+      const calendlyUrl = process.env.CALENDLY_EVENT_URL ?? ''
+
+      const [approvedEmailId, inviteEmailId] = await Promise.all([
+        sendApplicantApproved({
           to: result.applicantEmail,
-          subject: `Congratulations — Exchange Four Application Update`,
-          resendId: emailId,
-        },
-      })
+          name: result.applicantName,
+          reference: result.reference,
+          positionTitle: null,
+        }).catch(() => null),
+        calendlyUrl
+          ? sendInterviewInvite({
+              to: result.applicantEmail,
+              name: result.applicantName,
+              reference: result.reference,
+              calendlyUrl,
+            }).catch(() => null)
+          : Promise.resolve(null),
+      ])
+
+      await Promise.all([
+        createInterviewInvite(applicationId),
+        db.emailEvent.create({
+          data: {
+            applicationId,
+            type: 'APPLICANT_APPROVED',
+            to: result.applicantEmail,
+            subject: `Congratulations — Exchange Four Application Update`,
+            resendId: approvedEmailId,
+          },
+        }),
+        inviteEmailId
+          ? db.emailEvent.create({
+              data: {
+                applicationId,
+                type: 'INTERVIEW_INVITE',
+                to: result.applicantEmail,
+                subject: `Interview Invitation — Exchange Four — ${result.reference}`,
+                resendId: inviteEmailId,
+              },
+            })
+          : null,
+      ].filter(Boolean))
     } else if (decision === 'rejected') {
       const result = await finalReject(applicationId, userId)
       const emailId = await sendApplicantRejected({
