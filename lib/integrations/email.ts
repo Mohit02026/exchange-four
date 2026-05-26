@@ -275,3 +275,36 @@ export async function sendInterviewConfirmation(params: {
   if (error) throw new Error(`Resend error (interview confirmation): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendOfferLetter(params: {
+  to: string
+  name: string
+  reference: string
+  positionTitle: string | null
+  startDate: string | null
+}): Promise<string | null> {
+  const position = params.positionTitle ?? 'the position'
+  const startLine = params.startDate
+    ? `<p><strong>Start Date:</strong> ${params.startDate}</p>`
+    : `<p>Your start date will be confirmed shortly by the team.</p>`
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to(params.to),
+    subject: `Welcome to Exchange Four — ${params.reference}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Welcome to Exchange Four</h2>
+        <p>Dear ${params.name},</p>
+        <p>We are delighted to offer you the position of <strong>${position}</strong> at Exchange Four.</p>
+        <p><strong>Reference:</strong> ${params.reference}</p>
+        ${startLine}
+        <p style="margin-top:16px">Our team will be in touch with further details about your onboarding, including your NDA, employee handbook, and first-week schedule.</p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (offer letter): ${error.message}`)
+  return data?.id ?? null
+}

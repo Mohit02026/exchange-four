@@ -139,7 +139,27 @@ export default function ReviewForm({ application }: { application: ApplicationDa
     }
   }
 
+  async function markHired() {
+    setActionLoading('HIRED')
+    setMessage('')
+    try {
+      const res = await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId: application.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Failed to create employee record')
+      router.push(`/hr/onboarding`)
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Error marking as hired.')
+    } finally {
+      setActionLoading('')
+    }
+  }
+
   const isRejected = application.status === 'REJECTED'
+  const canHire = ['INTERVIEW_SCHEDULED', 'START_DATE_REQUESTED'].includes(application.status)
 
   return (
     <div style={{ display: 'flex', gap: 0, minHeight: '100vh' }}>
@@ -267,6 +287,11 @@ export default function ReviewForm({ application }: { application: ApplicationDa
           {(application.status === 'EXECUTIVE_APPROVED' || application.status === 'EXECUTIVE_DISAPPROVED') && (
             <ActionBtn onClick={() => router.push(`/hr/applications/${application.id}/final`)} accent>
               Final Decision →
+            </ActionBtn>
+          )}
+          {canHire && (
+            <ActionBtn onClick={markHired} disabled={!!actionLoading}>
+              {actionLoading === 'HIRED' ? 'Creating record…' : '✓ Mark as Hired'}
             </ActionBtn>
           )}
         </div>
