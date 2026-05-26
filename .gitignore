@@ -63,3 +63,6 @@ build-plan.md
 
 # daily reports (local only, never pushed)
 /reports/
+
+# local dev scripts (not for repo)
+/scripts/
