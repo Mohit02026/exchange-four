@@ -61,6 +61,7 @@ export async function POST(req: Request) {
     reference: application.reference,
     positionTitle: application.position?.title ?? null,
     startDate: startDateFormatted,
+    employeeId: employee.id,
   }).catch((err) => console.error('[Offer letter email error]', err))
 
   notifyEmployeeHired({

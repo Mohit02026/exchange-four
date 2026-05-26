@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = `Exchange Four Personnel Desk <${process.env.RESEND_FROM_EMAIL ?? 'noreply@hr.exchangefour.com'}>`
-const BASE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+const BASE_URL = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
 // When set, all emails are redirected to this address — use during local testing
 function to(address: string): string {
@@ -282,11 +282,22 @@ export async function sendOfferLetter(params: {
   reference: string
   positionTitle: string | null
   startDate: string | null
+  employeeId?: string
 }): Promise<string | null> {
   const position = params.positionTitle ?? 'the position'
   const startLine = params.startDate
     ? `<p><strong>Start Date:</strong> ${params.startDate}</p>`
     : `<p>Your start date will be confirmed shortly by the team.</p>`
+  const acknowledgeSection = params.employeeId
+    ? `
+        <p style="margin-top:24px">To complete your onboarding, please acknowledge your documents using the secure link below:</p>
+        <p style="margin-top:12px">
+          <a href="${BASE_URL}/acknowledge/${params.employeeId}" style="background:#1a1a1a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">
+            Acknowledge Documents
+          </a>
+        </p>
+        <p style="font-size:12px;color:#999;margin-top:8px">NDA · Employment Contract · Company Policies</p>`
+    : `<p style="margin-top:16px">Our team will be in touch with further details about your onboarding, including your NDA, employee handbook, and first-week schedule.</p>`
 
   const { data, error } = await resend.emails.send({
     from: FROM,
@@ -300,7 +311,7 @@ export async function sendOfferLetter(params: {
         <p>We are delighted to offer you the position of <strong>${position}</strong> at Exchange Four.</p>
         <p><strong>Reference:</strong> ${params.reference}</p>
         ${startLine}
-        <p style="margin-top:16px">Our team will be in touch with further details about your onboarding, including your NDA, employee handbook, and first-week schedule.</p>
+        ${acknowledgeSection}
         <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
       </div>
     `,
