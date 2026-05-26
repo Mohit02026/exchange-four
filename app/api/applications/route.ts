@@ -6,6 +6,7 @@ import { generateReviewToken } from '@/lib/utils/tokens'
 import { writeAuditLog } from '@/lib/utils/audit'
 import { sendApplicantConfirmation, sendNicolaNotification } from '@/lib/integrations/email'
 import { getApplicationQueue } from '@/lib/services/reviews'
+import { createApplicantFolder, uploadFileToDrive, deleteLocalUploads, mimeTypeForFile } from '@/lib/services/drive'
 
 export async function GET() {
   const session = await auth()
@@ -145,6 +146,37 @@ export async function POST(req: NextRequest) {
       ],
     }),
   ])
+
+  // Upload files to Google Drive (non-fatal — submission succeeds even if Drive is not configured)
+  try {
+    const applicantName = `${applicant.firstName} ${applicant.lastName}`
+    const folderName = `${reference} — ${applicantName}`
+    const folder = await createApplicantFolder(folderName)
+    if (folder) {
+      const cvFile = await db.applicationFile.findFirst({ where: { applicationId: application.id, type: 'CV' } })
+      const photoFile = await db.applicationFile.findFirst({ where: { applicationId: application.id, type: 'PHOTO' } })
+      const videoRecord = await db.applicantVideo.findFirst({ where: { applicationId: application.id } })
+
+      const [cvDriveId, photoDriveId, videoDriveId] = await Promise.all([
+        cvFile ? uploadFileToDrive(cvFile.fileUrl, cvFile.fileName, mimeTypeForFile(cvFile.fileName), folder.folderId) : null,
+        photoFile ? uploadFileToDrive(photoFile.fileUrl, photoFile.fileName, mimeTypeForFile(photoFile.fileName), folder.folderId) : null,
+        videoRecord ? uploadFileToDrive(videoRecord.url, video.name, mimeTypeForFile(video.name), folder.folderId) : null,
+      ])
+
+      await Promise.all([
+        db.driveFolder.create({ data: { applicationId: application.id, folderId: folder.folderId, folderUrl: folder.folderUrl, type: 'APPLICANT' } }),
+        cvFile && cvDriveId ? db.applicationFile.update({ where: { id: cvFile.id }, data: { driveFileId: cvDriveId } }) : null,
+        photoFile && photoDriveId ? db.applicationFile.update({ where: { id: photoFile.id }, data: { driveFileId: photoDriveId } }) : null,
+        videoRecord && videoDriveId ? db.applicantVideo.update({ where: { id: videoRecord.id }, data: { driveFileId: videoDriveId } }) : null,
+      ].filter(Boolean))
+
+      // Remove local files now that they are safely on Drive
+      deleteLocalUploads(reference)
+    }
+  } catch (driveErr) {
+    // Log but do not fail the request — Drive upload is best-effort
+    console.error('[Drive upload error]', driveErr)
+  }
 
   return NextResponse.json({ reference: application.reference }, { status: 201 })
   } catch (err) {

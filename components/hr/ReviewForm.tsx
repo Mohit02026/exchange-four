@@ -40,8 +40,9 @@ type ApplicationData = {
     location: string | null
     user: { email: string }
   }
-  files: { id: string; type: string; fileName: string; fileUrl: string }[]
-  videos: { id: string; url: string }[]
+  files: { id: string; type: string; fileName: string; fileUrl: string; driveFileId: string | null }[]
+  videos: { id: string; url: string; driveFileId: string | null }[]
+  driveFolder: { folderId: string; folderUrl: string } | null
   review: {
     id: string
     notesForAvi: string | null
@@ -165,10 +166,23 @@ export default function ReviewForm({ application }: { application: ApplicationDa
         {application.careerGoals && <Section label="Career Goals"><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{application.careerGoals}</p></Section>}
         {application.whyExchangeFour && <Section label="Why Exchange Four"><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{application.whyExchangeFour}</p></Section>}
 
+        {application.driveFolder && (
+          <Section label="Google Drive">
+            <a href={application.driveFolder.folderUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb' }}>
+              Open Applicant Folder ↗
+            </a>
+          </Section>
+        )}
+
         {cv && (
           <Section label="CV">
-            <a href={cv.fileUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb' }}>
-              {cv.fileName}
+            <a
+              href={cv.driveFileId ? `https://drive.google.com/file/d/${cv.driveFileId}/view` : cv.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 13, color: '#2563eb' }}
+            >
+              {cv.fileName}{cv.driveFileId ? ' (Drive)' : ''}
             </a>
           </Section>
         )}

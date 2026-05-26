@@ -41,6 +41,7 @@ export async function getApplicationById(id: string) {
       position: true,
       files: true,
       videos: true,
+      driveFolder: true,
       review: { include: { sections: true } },
     },
   })
