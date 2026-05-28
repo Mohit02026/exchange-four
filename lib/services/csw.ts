@@ -14,7 +14,8 @@ function val(v: string | null | undefined, fallback = 'Not yet collected'): stri
   return v?.trim() || fallback
 }
 
-function buildTemplate(
+// Exported for unit testing only — not part of the public service API
+export function buildTemplate(
   app: Awaited<ReturnType<typeof getApplicationForCSW>>,
 ): { content: string; sourceFields: Record<string, string>; missingFields: string[] } {
   if (!app) throw new Error('Application not found')

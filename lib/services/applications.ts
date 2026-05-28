@@ -4,10 +4,15 @@ import { db } from '@/lib/db'
 export { generateApplicationReference as generateReference } from '@/lib/utils/references'
 
 export async function saveUpload(file: File, reference: string, label: string): Promise<string> {
-  const dir = path.join(process.cwd(), 'public', 'uploads', reference)
-  fs.mkdirSync(dir, { recursive: true })
   const ext = path.extname(file.name)
   const filename = `${label}${ext}`
+  // In E2E test mode, skip disk I/O entirely — writing to public/ triggers Next.js
+  // webpack HMR which can restart the dev server mid-suite and cause ERR_CONNECTION_REFUSED.
+  if (process.env.SKIP_DRIVE_UPLOAD === 'true') {
+    return `/uploads/${reference}/${filename}`
+  }
+  const dir = path.join(process.cwd(), 'public', 'uploads', reference)
+  fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, filename), Buffer.from(await file.arrayBuffer()))
   return `/uploads/${reference}/${filename}`
 }

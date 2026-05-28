@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
 import { upsertReview } from '@/lib/services/reviews'
 import { writeAuditLog } from '@/lib/utils/audit'
 
@@ -26,6 +27,13 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
   const review = await upsertReview({ ...parsed.data, reviewerId: session.user.id })
+
+  // Advance application from SUBMITTED → UNDER_REVIEW when HR first touches a review.
+  // updateMany is a no-op if the application is already beyond SUBMITTED.
+  await db.application.updateMany({
+    where: { id: parsed.data.applicationId, status: 'SUBMITTED' },
+    data: { status: 'UNDER_REVIEW' },
+  })
 
   await writeAuditLog({
     action: 'REVIEW_SAVED',

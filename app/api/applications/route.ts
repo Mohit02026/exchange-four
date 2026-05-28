@@ -106,28 +106,40 @@ export async function POST(req: NextRequest) {
   const applicantName = `${applicant.firstName} ${applicant.lastName}`
   const reviewToken = await generateReviewToken(application.id)
 
+  // Email errors are non-fatal — application is already created; log null resendId.
+  // Cap at 8 s so a slow/unavailable Resend endpoint never blocks the 201 response.
+  function withEmailTimeout<T>(p: Promise<T>): Promise<T | null> {
+    return Promise.race([
+      p.catch(() => null),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+  }
+
   const [applicantEmailId, nicolaEmailId] = await Promise.all([
-    sendApplicantConfirmation({
+    withEmailTimeout(sendApplicantConfirmation({
       to: applicant.correspondenceEmail,
       name: applicantName,
       reference: application.reference,
-    }),
-    sendNicolaNotification({
+    })),
+    withEmailTimeout(sendNicolaNotification({
       applicantName,
       reference: application.reference,
       positionTitle,
       reviewToken,
-    }),
+    })),
   ])
 
   await Promise.all([
+    // Audit log is best-effort — FK violation can occur in test environments where the
+    // session JWT outlives the test user record. Never block a successful submission.
     writeAuditLog({
       action: 'APPLICATION_SUBMITTED',
       entityType: 'Application',
       entityId: application.id,
       userId: session.user.id,
       metadata: { reference: application.reference },
-    }),
+    }).catch((err) => console.error('[audit log] APPLICATION_SUBMITTED failed:', err.message)),
+    // Email events are best-effort — never block the 201 response.
     db.emailEvent.createMany({
       data: [
         {
@@ -145,7 +157,7 @@ export async function POST(req: NextRequest) {
           resendId: nicolaEmailId,
         },
       ],
-    }),
+    }).catch((err) => console.error('[email events] APPLICATION_SUBMITTED failed:', err.message)),
   ])
 
   // Slack notification (non-fatal)
@@ -155,36 +167,45 @@ export async function POST(req: NextRequest) {
     positionTitle,
   }).catch(() => null)
 
-  // Upload files to Google Drive (non-fatal — submission succeeds even if Drive is not configured)
-  try {
-    const applicantName = `${applicant.firstName} ${applicant.lastName}`
-    const folderName = `${reference} — ${applicantName}`
-    const folder = await createApplicantFolder(folderName)
-    if (folder) {
-      const cvFile = await db.applicationFile.findFirst({ where: { applicationId: application.id, type: 'CV' } })
-      const photoFile = await db.applicationFile.findFirst({ where: { applicationId: application.id, type: 'PHOTO' } })
-      const videoRecord = await db.applicantVideo.findFirst({ where: { applicationId: application.id } })
+  // Drive upload runs in the background — do NOT await it before returning 201.
+  // JWT auth + Google API calls can take 10-15 s, which would block the applicant's
+  // browser long enough to time out the form redirect.  The application is already
+  // persisted; Drive is best-effort.
+  // SKIP_DRIVE_UPLOAD=true in .env.test prevents the background JWT auth from
+  // running during E2E tests, which otherwise crashes the dev server.
+  const driveAppId   = application.id
+  const driveRef     = reference
+  const driveVideoName = video.name
+  if (!process.env.SKIP_DRIVE_UPLOAD) setImmediate(() => {
+    void (async () => {
+      try {
+        const folderName = `${driveRef} — ${applicantName}`
+        const folder = await createApplicantFolder(folderName)
+        if (folder) {
+          const cvFile     = await db.applicationFile.findFirst({ where: { applicationId: driveAppId, type: 'CV' } })
+          const photoFile  = await db.applicationFile.findFirst({ where: { applicationId: driveAppId, type: 'PHOTO' } })
+          const videoRecord = await db.applicantVideo.findFirst({ where: { applicationId: driveAppId } })
 
-      const [cvDriveId, photoDriveId, videoDriveId] = await Promise.all([
-        cvFile ? uploadFileToDrive(cvFile.fileUrl, cvFile.fileName, mimeTypeForFile(cvFile.fileName), folder.folderId) : null,
-        photoFile ? uploadFileToDrive(photoFile.fileUrl, photoFile.fileName, mimeTypeForFile(photoFile.fileName), folder.folderId) : null,
-        videoRecord ? uploadFileToDrive(videoRecord.url, video.name, mimeTypeForFile(video.name), folder.folderId) : null,
-      ])
+          const [cvDriveId, photoDriveId, videoDriveId] = await Promise.all([
+            cvFile     ? uploadFileToDrive(cvFile.fileUrl,    cvFile.fileName,    mimeTypeForFile(cvFile.fileName),    folder.folderId) : null,
+            photoFile  ? uploadFileToDrive(photoFile.fileUrl, photoFile.fileName, mimeTypeForFile(photoFile.fileName), folder.folderId) : null,
+            videoRecord ? uploadFileToDrive(videoRecord.url,  driveVideoName,     mimeTypeForFile(driveVideoName),     folder.folderId) : null,
+          ])
 
-      await Promise.all([
-        db.driveFolder.create({ data: { applicationId: application.id, folderId: folder.folderId, folderUrl: folder.folderUrl, type: 'APPLICANT' } }),
-        cvFile && cvDriveId ? db.applicationFile.update({ where: { id: cvFile.id }, data: { driveFileId: cvDriveId } }) : null,
-        photoFile && photoDriveId ? db.applicationFile.update({ where: { id: photoFile.id }, data: { driveFileId: photoDriveId } }) : null,
-        videoRecord && videoDriveId ? db.applicantVideo.update({ where: { id: videoRecord.id }, data: { driveFileId: videoDriveId } }) : null,
-      ].filter(Boolean))
+          await Promise.all([
+            db.driveFolder.create({ data: { applicationId: driveAppId, folderId: folder.folderId, folderUrl: folder.folderUrl, type: 'APPLICANT' } }),
+            cvFile    && cvDriveId    ? db.applicationFile.update({ where: { id: cvFile.id    }, data: { driveFileId: cvDriveId    } }) : null,
+            photoFile && photoDriveId ? db.applicationFile.update({ where: { id: photoFile.id }, data: { driveFileId: photoDriveId } }) : null,
+            videoRecord && videoDriveId ? db.applicantVideo.update({ where: { id: videoRecord.id }, data: { driveFileId: videoDriveId } }) : null,
+          ].filter(Boolean))
 
-      // Remove local files now that they are safely on Drive
-      deleteLocalUploads(reference)
-    }
-  } catch (driveErr) {
-    // Log but do not fail the request — Drive upload is best-effort
-    console.error('[Drive upload error]', driveErr)
-  }
+          deleteLocalUploads(driveRef)
+        }
+      } catch (driveErr) {
+        console.error('[Drive upload error]', driveErr)
+      }
+    })()
+  })
 
   return NextResponse.json({ reference: application.reference }, { status: 201 })
   } catch (err) {

@@ -5,7 +5,8 @@ const FROM = `Exchange Four Personnel Desk <${process.env.RESEND_FROM_EMAIL ?? '
 const BASE_URL = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
 // When set, all emails are redirected to this address — use during local testing
-function to(address: string): string {
+// Exported for unit testing only
+export function to(address: string): string {
   return process.env.TEST_EMAIL_OVERRIDE || address
 }
 

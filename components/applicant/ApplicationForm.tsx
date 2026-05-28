@@ -98,10 +98,11 @@ export default function ApplicationForm({ positions, initialPositionId }: Props)
       <div className="space-y-4">
         {TEXT_FIELDS.map(({ name, label, placeholder }) => (
           <div key={name}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
               {label} <span className="text-red-500">*</span>
             </label>
             <textarea
+              id={name}
               name={name}
               required
               rows={4}
