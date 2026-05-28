@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -66,3 +68,6 @@ build-plan.md
 
 # local dev scripts (not for repo)
 /scripts/
+
+# IDE
+.vscode/
