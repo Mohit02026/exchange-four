@@ -30,7 +30,7 @@ export default async function StatusPage() {
     where: { applicantId: applicant.id },
     include: {
       position: { select: { title: true } },
-      interviewEvent: true,
+      interviewEvent: { include: { survey: true } },
     },
     orderBy: { submittedAt: 'desc' },
   })
@@ -100,6 +100,28 @@ export default async function StatusPage() {
                 minute: '2-digit',
               })}
             />
+          )}
+
+          {/* Survey prompt: show after interview is booked and survey not yet submitted */}
+          {application.interviewEvent?.scheduledAt && !application.interviewEvent.survey && (
+            <div className="px-6 py-5 bg-gray-50">
+              <p className="text-sm text-gray-700 mb-3">
+                We&apos;d love to hear how your interview went. Please take a moment to fill in our short survey.
+              </p>
+              <Link
+                href="/survey"
+                className="inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+              >
+                Complete Post-Interview Survey →
+              </Link>
+            </div>
+          )}
+
+          {/* Confirmation once survey submitted */}
+          {application.interviewEvent?.survey && (
+            <div className="px-6 py-4 bg-gray-50">
+              <p className="text-sm text-gray-500">✓ Post-interview survey submitted. Thank you!</p>
+            </div>
           )}
         </div>
       )}
