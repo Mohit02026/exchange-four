@@ -70,7 +70,7 @@ export async function seedApplicantUser(email = 'applicant@example.com') {
 }
 
 export async function seedPosition(title = 'Operations Coordinator') {
-  const org = await testDb.orgBoardUnit.create({ data: { name: 'Operations' } })
+  const org = await testDb.orgBoardUnit.create({ data: { name: 'Operations', type: 'DEPARTMENT' } })
   return testDb.position.create({
     data: { title, orgBoardUnitId: org.id, isOpen: true, description: 'Test position' },
   })

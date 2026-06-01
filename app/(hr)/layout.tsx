@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { auth } from '@/lib/auth'
+import { auth, signOut } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
 export default async function HRLayout({ children }: { children: React.ReactNode }) {
@@ -45,8 +45,30 @@ export default async function HRLayout({ children }: { children: React.ReactNode
             </Link>
           ))}
         </nav>
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #333', fontSize: 12, color: '#555' }}>
-          {session.user.email}
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #333' }}>
+          <div style={{ fontSize: 12, color: '#555', marginBottom: 10 }}>{session.user.email}</div>
+          <form
+            action={async () => {
+              'use server'
+              await signOut({ redirectTo: '/login' })
+            }}
+          >
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '7px 0',
+                background: 'transparent',
+                border: '1px solid #333',
+                borderRadius: 4,
+                color: '#888',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              Sign Out
+            </button>
+          </form>
         </div>
       </aside>
       <main style={{ flex: 1, background: '#f9f9f9', overflowY: 'auto' }}>

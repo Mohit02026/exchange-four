@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import PositionCard from '@/components/applicant/PositionCard'
 import Link from 'next/link'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function PositionsPage() {
   const positions = await db.position.findMany({
