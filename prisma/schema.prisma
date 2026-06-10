@@ -71,6 +71,23 @@ enum TaskStatus {
   COMPLETE
 }
 
+enum SurveyType {
+  NEW_HIRE
+  SENIOR
+}
+
+enum TrainingStatus {
+  IN_PROGRESS
+  PASSED
+  CORRECTION_NEEDED
+}
+
+enum StatFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
@@ -335,8 +352,11 @@ model Employee {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  onboardingPlan OnboardingPlan?
-  dailyCheckins  DailyCheckin[]
+  onboardingPlan  OnboardingPlan?
+  dailyCheckins   DailyCheckin[]
+  newHireSurveys  NewHireSurvey[]
+  trainingPlan    TrainingPlan?
+  statistics      Statistic[]
 }
 
 model OnboardingPlan {
@@ -376,6 +396,92 @@ model DailyCheckin {
   anyBlocks       String
   needsHelp       String
   submittedAt DateTime @default(now())
+}
+
+// ─── Phase 13: New Hire Surveys ──────────────────────────────────────────────
+
+model NewHireSurvey {
+  id             String     @id @default(cuid())
+  employeeId     String
+  employee       Employee   @relation(fields: [employeeId], references: [id])
+  type           SurveyType
+  weekNumber     Int
+  q1             String
+  q2             String
+  q3             String
+  q4             String
+  q5             String
+  q6             String
+  q7             String?
+  q8             String?
+  ratingScore    Int?
+  handlingNeeded Boolean    @default(false)
+  submittedAt    DateTime   @default(now())
+}
+
+// ─── Phase 14: Training & Hatting ────────────────────────────────────────────
+
+model TrainingPlan {
+  id         String         @id @default(cuid())
+  employeeId String         @unique
+  employee   Employee       @relation(fields: [employeeId], references: [id])
+  postTitle  String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  tasks      TrainingTask[]
+}
+
+model TrainingTask {
+  id                String         @id @default(cuid())
+  planId            String
+  plan              TrainingPlan   @relation(fields: [planId], references: [id])
+  functionName      String
+  policyRef         String?
+  trainerId         String?
+  status            TrainingStatus @default(IN_PROGRESS)
+  dateStarted       DateTime?
+  datePassed        DateTime?
+  qualityCheckNotes String?
+  correctionNotes   String?
+  evidenceFileUrl   String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model HatPack {
+  id        String   @id @default(cuid())
+  postTitle String   @unique
+  functions Json
+  createdAt DateTime @default(now())
+}
+
+// ─── Phase 15: Statistics ─────────────────────────────────────────────────────
+
+model Statistic {
+  id                String           @id @default(cuid())
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  postTitle         String
+  name              String
+  definition        String
+  unit              String
+  frequency         StatFrequency
+  target            Float?
+  seniorResponsible String?
+  dataSource        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  entries           StatisticEntry[]
+}
+
+model StatisticEntry {
+  id          String    @id @default(cuid())
+  statisticId String
+  statistic   Statistic @relation(fields: [statisticId], references: [id])
+  value       Float
+  period      String
+  enteredById String?
+  enteredAt   DateTime  @default(now())
 }
 
 // ─── Events & Audit ──────────────────────────────────────────────────────────
