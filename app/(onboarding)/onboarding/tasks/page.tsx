@@ -12,7 +12,8 @@ export default async function OnboardingTasksPage() {
   const employee = await getEmployeeByUserId(session.user.id)
   if (!employee) redirect('/status')
 
-  const tasks = employee.onboardingPlan?.tasks ?? []
+  const rawTasks = employee.onboardingPlan?.tasks ?? []
+  const tasks = JSON.parse(JSON.stringify(rawTasks))
 
   return (
     <div>

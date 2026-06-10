@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 
-const NEW_HIRE_QUESTIONS = [
+interface Question {
+  key: string
+  label: string
+  optional?: boolean
+  isRating?: boolean
+}
+
+const NEW_HIRE_QUESTIONS: Question[] = [
   { key: 'q1', label: 'How often do you communicate with your senior?' },
   { key: 'q2', label: 'How do those conversations go?' },
   { key: 'q3', label: 'What is the biggest barrier to succeeding at your job?' },
@@ -11,9 +18,9 @@ const NEW_HIRE_QUESTIONS = [
   { key: 'q6', label: 'What orders did you not fully understand?' },
   { key: 'q7', label: 'What do you need to be more successful?', optional: true },
   { key: 'q8', label: 'Anything else?', optional: true },
-] as const
+]
 
-const SENIOR_QUESTIONS = [
+const SENIOR_QUESTIONS: Question[] = [
   { key: 'q1', label: "Is anything about this person's space difficult to communicate with?" },
   { key: 'q2', label: 'How clear is their communication?' },
   { key: 'q3', label: 'Do they duplicate orders?' },
@@ -21,7 +28,7 @@ const SENIOR_QUESTIONS = [
   { key: 'q5', label: 'What would you change?' },
   { key: 'q6', label: 'Rate them 1–10.', isRating: true },
   { key: 'q7', label: 'If below 10, what must be worked on?', optional: true },
-] as const
+]
 
 interface Props {
   type: 'NEW_HIRE' | 'SENIOR'

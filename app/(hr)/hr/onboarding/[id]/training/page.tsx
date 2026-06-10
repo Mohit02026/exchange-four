@@ -85,7 +85,7 @@ export default async function EmployeeTrainingPage({
             </h2>
             <TrainingRecord
               planId={plan.id}
-              tasks={plan.tasks}
+              tasks={JSON.parse(JSON.stringify(plan.tasks))}
               employeeId={id}
             />
           </section>

@@ -91,13 +91,14 @@ enum StatFrequency {
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  role      Role     @default(APPLICANT)
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  role          Role     @default(APPLICANT)
+  name          String?
+  ethicsAccess  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   applicant Applicant?
   employee  Employee?
