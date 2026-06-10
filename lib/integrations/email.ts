@@ -363,3 +363,40 @@ export async function sendCheckinSummary(params: {
   if (error) throw new Error(`Resend error (checkin summary): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendSurveyHandlingAlert(params: {
+  employeeName: string
+  weekNumber: number
+  type: 'NEW_HIRE' | 'SENIOR'
+  flaggedAnswers: { question: string; answer: string }[]
+}): Promise<string | null> {
+  const typeLabel = params.type === 'NEW_HIRE' ? 'New Hire' : 'Senior'
+  const rows = params.flaggedAnswers.map(({ question, answer }) => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #eee;color:#666;font-size:13px;vertical-align:top;width:40%">${question}</td>
+      <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eee;font-size:14px;vertical-align:top;color:#dc2626">${answer}</td>
+    </tr>
+  `).join('')
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('nicola@exchangefour.com'),
+    subject: `Survey Flag: ${params.employeeName} — Week ${params.weekNumber}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#dc2626">Survey Flag — Handling Required</h2>
+        <p><strong>Employee:</strong> ${params.employeeName}</p>
+        <p><strong>Survey Type:</strong> ${typeLabel}</p>
+        <p><strong>Week:</strong> ${params.weekNumber}</p>
+        <p style="margin-top:16px;font-size:14px;color:#374151">The following answers require attention:</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:12px">
+          ${rows}
+        </table>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (survey handling alert): ${error.message}`)
+  return data?.id ?? null
+}
