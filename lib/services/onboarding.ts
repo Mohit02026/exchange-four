@@ -117,3 +117,34 @@ export async function uncompleteTask(taskId: string) {
 export async function getEmployeeByApplication(applicationId: string) {
   return db.employee.findUnique({ where: { applicationId } })
 }
+
+export async function getEmployeeByUserId(userId: string) {
+  return db.employee.findUnique({
+    where: { userId },
+    include: {
+      onboardingPlan: {
+        include: { tasks: { orderBy: { dueDay: 'asc' } } },
+      },
+      dailyCheckins: {
+        orderBy: { submittedAt: 'desc' },
+        take: 7,
+      },
+    },
+  })
+}
+
+export async function submitCheckin(
+  employeeId: string,
+  data: {
+    completedToday: string
+    studiedToday: string
+    productProduced: string
+    whatWasUnclear: string
+    anyBlocks: string
+    needsHelp: string
+  }
+) {
+  return db.dailyCheckin.create({
+    data: { employeeId, ...data },
+  })
+}

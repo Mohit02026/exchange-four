@@ -336,6 +336,7 @@ model Employee {
   updatedAt      DateTime  @updatedAt
 
   onboardingPlan OnboardingPlan?
+  dailyCheckins  DailyCheckin[]
 }
 
 model OnboardingPlan {
@@ -362,6 +363,19 @@ model OnboardingTask {
   completedAt    DateTime?
   slackMessageId String?
   createdAt      DateTime       @default(now())
+}
+
+model DailyCheckin {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  completedToday  String
+  studiedToday    String
+  productProduced String
+  whatWasUnclear  String
+  anyBlocks       String
+  needsHelp       String
+  submittedAt DateTime @default(now())
 }
 
 // ─── Events & Audit ──────────────────────────────────────────────────────────

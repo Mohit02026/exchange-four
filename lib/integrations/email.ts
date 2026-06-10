@@ -320,3 +320,46 @@ export async function sendOfferLetter(params: {
   if (error) throw new Error(`Resend error (offer letter): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendCheckinSummary(params: {
+  employeeName: string
+  completedToday: string
+  studiedToday: string
+  productProduced: string
+  whatWasUnclear: string
+  anyBlocks: string
+  needsHelp: string
+  submittedAt: Date
+}): Promise<string | null> {
+  const dateStr = params.submittedAt.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('nicola@exchangefour.com'),
+    subject: `Daily Check-In: ${params.employeeName} — ${dateStr}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Daily Check-In Summary</h2>
+        <p><strong>${params.employeeName}</strong> &mdash; ${dateStr}</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px">
+          ${[
+            ['What did you complete today?', params.completedToday],
+            ['What did you study today?', params.studiedToday],
+            ['What product did you produce?', params.productProduced],
+            ['What was unclear?', params.whatWasUnclear],
+            ['Any blocks?', params.anyBlocks],
+            ['Do you need help?', params.needsHelp],
+          ].map(([q, a]) => `
+            <tr>
+              <td style="padding:10px 0;border-bottom:1px solid #eee;color:#666;font-size:13px;vertical-align:top;width:40%">${q}</td>
+              <td style="padding:10px 0 10px 16px;border-bottom:1px solid #eee;font-size:14px;vertical-align:top">${a}</td>
+            </tr>
+          `).join('')}
+        </table>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (checkin summary): ${error.message}`)
+  return data?.id ?? null
+}
