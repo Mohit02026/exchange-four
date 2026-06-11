@@ -38,7 +38,7 @@ export default function CSWApprovalTab({ csw, approvalRequest }: CSWApprovalTabP
           <span className="text-xs text-gray-500">Approved {new Date(csw.approvedAt).toLocaleDateString()}</span>
         )}
         {csw.driveFileId && (
-          <span className="text-xs text-gray-500">Saved to Drive</span>
+          <span className="text-xs text-gray-500">Stored</span>
         )}
       </div>
 

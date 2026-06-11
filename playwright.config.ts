@@ -45,7 +45,7 @@ export default defineConfig({
     timeout: 120000,
     env: {
       DATABASE_URL: 'postgresql://ef_user:ef_secure_2026@localhost:5433/exchange_four_test',
-      SKIP_DRIVE_UPLOAD: 'true',
+      SKIP_STORAGE_UPLOAD: 'true',
       NEXTAUTH_URL: 'http://localhost:3002',
     },
   },

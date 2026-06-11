@@ -8,7 +8,7 @@ export async function saveUpload(file: File, reference: string, label: string): 
   const filename = `${label}${ext}`
   // In E2E test mode, skip disk I/O entirely — writing to public/ triggers Next.js
   // webpack HMR which can restart the dev server mid-suite and cause ERR_CONNECTION_REFUSED.
-  if (process.env.SKIP_DRIVE_UPLOAD === 'true') {
+  if (process.env.SKIP_STORAGE_UPLOAD === 'true') {
     return `/uploads/${reference}/${filename}`
   }
   const dir = path.join(process.cwd(), 'public', 'uploads', reference)

@@ -7,7 +7,7 @@ import { writeAuditLog } from '@/lib/utils/audit'
 import { sendApplicantConfirmation, sendNicolaNotification } from '@/lib/integrations/email'
 import { notifyApplicationSubmitted } from '@/lib/integrations/slack'
 import { getApplicationQueue } from '@/lib/services/reviews'
-import { createApplicantFolder, uploadFileToDrive, deleteLocalUploads, mimeTypeForFile } from '@/lib/services/drive'
+import { createApplicantFolder, uploadFileToDrive, deleteLocalUploads, mimeTypeForFile } from '@/lib/services/storage'
 
 export async function GET() {
   const session = await auth()
@@ -171,12 +171,12 @@ export async function POST(req: NextRequest) {
   // JWT auth + Google API calls can take 10-15 s, which would block the applicant's
   // browser long enough to time out the form redirect.  The application is already
   // persisted; Drive is best-effort.
-  // SKIP_DRIVE_UPLOAD=true in .env.test prevents the background JWT auth from
-  // running during E2E tests, which otherwise crashes the dev server.
+  // SKIP_STORAGE_UPLOAD=true in .env.test prevents the background MinIO upload
+  // from running during E2E tests, which otherwise crashes the dev server.
   const driveAppId   = application.id
   const driveRef     = reference
   const driveVideoName = video.name
-  if (!process.env.SKIP_DRIVE_UPLOAD) setImmediate(() => {
+  if (!process.env.SKIP_STORAGE_UPLOAD) setImmediate(() => {
     void (async () => {
       try {
         const folderName = `${driveRef} — ${applicantName}`
@@ -194,9 +194,9 @@ export async function POST(req: NextRequest) {
 
           await Promise.all([
             db.driveFolder.create({ data: { applicationId: driveAppId, folderId: folder.folderId, folderUrl: folder.folderUrl, type: 'APPLICANT' } }),
-            cvFile    && cvDriveId    ? db.applicationFile.update({ where: { id: cvFile.id    }, data: { driveFileId: cvDriveId    } }) : null,
-            photoFile && photoDriveId ? db.applicationFile.update({ where: { id: photoFile.id }, data: { driveFileId: photoDriveId } }) : null,
-            videoRecord && videoDriveId ? db.applicantVideo.update({ where: { id: videoRecord.id }, data: { driveFileId: videoDriveId } }) : null,
+            cvFile    && cvDriveId    ? db.applicationFile.update({ where: { id: cvFile.id    }, data: { driveFileId: folder.folderId, fileUrl: cvDriveId    } }) : null,
+            photoFile && photoDriveId ? db.applicationFile.update({ where: { id: photoFile.id }, data: { driveFileId: folder.folderId, fileUrl: photoDriveId } }) : null,
+            videoRecord && videoDriveId ? db.applicantVideo.update({ where: { id: videoRecord.id }, data: { driveFileId: folder.folderId, url: videoDriveId } }) : null,
           ].filter(Boolean))
 
           deleteLocalUploads(driveRef)

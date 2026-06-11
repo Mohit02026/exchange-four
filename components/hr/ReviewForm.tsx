@@ -188,9 +188,9 @@ export default function ReviewForm({ application }: { application: ApplicationDa
         {application.whyExchangeFour && <Section label="Why Exchange Four"><p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{application.whyExchangeFour}</p></Section>}
 
         {application.driveFolder && (
-          <Section label="Google Drive">
+          <Section label="Storage">
             <a href={application.driveFolder.folderUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb' }}>
-              Open Applicant Folder ↗
+              Open Files ↗
             </a>
           </Section>
         )}
@@ -212,12 +212,12 @@ export default function ReviewForm({ application }: { application: ApplicationDa
         {cv && (
           <Section label="CV">
             <a
-              href={cv.driveFileId ? `https://drive.google.com/file/d/${cv.driveFileId}/view` : cv.fileUrl}
+              href={cv.fileUrl}
               target="_blank"
               rel="noreferrer"
               style={{ fontSize: 13, color: '#2563eb' }}
             >
-              {cv.fileName}{cv.driveFileId ? ' (Drive)' : ''}
+              {cv.fileName}
             </a>
           </Section>
         )}

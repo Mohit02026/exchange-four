@@ -8,7 +8,7 @@ interface AppFile {
 
 interface FilesTabProps {
   files: AppFile[]
-  driveFolder: { folderUrl: string } | null
+  driveFolder: { storageUrl?: string; folderUrl?: string } | null
 }
 
 const FILE_TYPE_COLORS: Record<string, string> = {
@@ -20,14 +20,14 @@ const FILE_TYPE_COLORS: Record<string, string> = {
 export default function FilesTab({ files, driveFolder }: FilesTabProps) {
   return (
     <div className="space-y-4">
-      {driveFolder && (
+      {driveFolder && (driveFolder.storageUrl ?? driveFolder.folderUrl) && (
         <a
-          href={driveFolder.folderUrl}
+          href={(driveFolder.storageUrl ?? driveFolder.folderUrl)!}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
         >
-          📁 Open Drive Folder ↗
+          📁 Open Files ↗
         </a>
       )}
 
