@@ -88,6 +88,20 @@ enum StatFrequency {
   MONTHLY
 }
 
+enum EthicsSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  SENSITIVE
+}
+
+enum EthicsStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  CLOSED
+  FILED
+}
+
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
@@ -100,9 +114,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  applicant Applicant?
-  employee  Employee?
-  auditLogs AuditLog[]
+  applicant        Applicant?
+  employee         Employee?
+  auditLogs        AuditLog[]
+  ethicsReported   EthicsReport[] @relation("EthicsReporter")
+  ethicsHandled    EthicsReport[] @relation("EthicsHandler")
 }
 
 // ─── Org Board ───────────────────────────────────────────────────────────────
@@ -150,7 +166,8 @@ model Applicant {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  applications Application[]
+  applications   Application[]
+  ethicsReports  EthicsReport[] @relation("EthicsSubject")
 }
 
 model Application {
@@ -358,6 +375,7 @@ model Employee {
   newHireSurveys  NewHireSurvey[]
   trainingPlan    TrainingPlan?
   statistics      Statistic[]
+  ethicsReports   EthicsReport[] @relation("EthicsSubject")
 }
 
 model OnboardingPlan {
@@ -483,6 +501,33 @@ model StatisticEntry {
   period      String
   enteredById String?
   enteredAt   DateTime  @default(now())
+}
+
+// ─── Phase 17: Ethics Reports ────────────────────────────────────────────────
+
+model EthicsReport {
+  id                String         @id @default(cuid())
+  reporterId        String
+  reporter          User           @relation("EthicsReporter", fields: [reporterId], references: [id])
+  subjectEmployeeId String?
+  subjectEmployee   Employee?      @relation("EthicsSubject", fields: [subjectEmployeeId], references: [id])
+  subjectApplicantId String?
+  subjectApplicant  Applicant?     @relation("EthicsSubject", fields: [subjectApplicantId], references: [id])
+  subjectType       String         // "EMPLOYEE" | "APPLICANT"
+  category          String
+  description       String
+  evidenceUrl       String?
+  witnesses         String?
+  severity          EthicsSeverity @default(LOW)
+  isSensitive       Boolean        @default(false)
+  triageNotes       String?
+  assignedHandlerId String?
+  assignedHandler   User?          @relation("EthicsHandler", fields: [assignedHandlerId], references: [id])
+  status            EthicsStatus   @default(OPEN)
+  outcome           String?
+  fileDestination   String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 }
 
 // ─── Events & Audit ──────────────────────────────────────────────────────────

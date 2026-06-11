@@ -1,9 +1,17 @@
 export const dynamic = 'force-dynamic'
 
 import { getHRStats } from '@/lib/services/stats'
+import { getOpenCount, getEthicsAlerts } from '@/lib/services/ethics'
+import Link from 'next/link'
 
 export default async function HRDashboardPage() {
-  const stats = await getHRStats()
+  const [stats, ethicsOpenCount, ethicsAlerts] = await Promise.all([
+    getHRStats(),
+    getOpenCount(),
+    getEthicsAlerts(),
+  ])
+
+  const ethicsAlertCount = ethicsAlerts.employeeAlerts.length + ethicsAlerts.applicantAlerts.length
 
   const pipelineMax = Math.max(...stats.pipeline.map((s) => s.count), 1)
   const approvalTotal = stats.approvals.approved + stats.approvals.disapproved
@@ -41,6 +49,36 @@ export default async function HRDashboardPage() {
         <KPICard label="Interviews Scheduled" value={stats.interviewsScheduled} color="#16a34a" />
         <KPICard label="Employees Hired" value={stats.onboarding.employees} color="#7c3aed" />
       </div>
+
+      {/* Ethics alert banner */}
+      {(ethicsOpenCount > 0 || ethicsAlertCount > 0) && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #fca5a5',
+          borderRadius: 8,
+          padding: '12px 20px',
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <span style={{ fontSize: 14, color: '#dc2626', fontWeight: 600 }}>
+              Ethics: {ethicsOpenCount} open report{ethicsOpenCount !== 1 ? 's' : ''}
+              {ethicsAlertCount > 0 && ` · ${ethicsAlertCount} subject${ethicsAlertCount !== 1 ? 's' : ''} at threshold`}
+            </span>
+          </div>
+          <Link
+            href="/hr/ethics"
+            style={{ fontSize: 13, color: '#dc2626', textDecoration: 'none', fontWeight: 600 }}
+          >
+            Review →
+          </Link>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
         {/* Pipeline funnel */}

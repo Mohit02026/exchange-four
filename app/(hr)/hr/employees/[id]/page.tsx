@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getReportsForSubject } from '@/lib/services/ethics'
 import EmployeeHeader from '@/components/hr/EmployeeHeader'
 import ProfileTabs from '@/components/hr/ProfileTabs'
 import OnboardingTab from '@/components/hr/tabs/OnboardingTab'
@@ -60,9 +61,15 @@ export default async function EmployeeProfilePage({
   })
   const hasEthicsAccess = currentUser?.ethicsAccess ?? false
 
+  const ethicsReports = await getReportsForSubject({
+    subjectEmployeeId: id,
+    hasEthicsAccess,
+  })
+
   const serialized = JSON.parse(JSON.stringify(employee))
   const serializedApp = application ? JSON.parse(JSON.stringify(application)) : null
   const serializedLogs = JSON.parse(JSON.stringify(auditLogs))
+  const serializedEthics = JSON.parse(JSON.stringify(ethicsReports))
 
   const tabs = [
     { key: 'onboarding', label: 'Onboarding' },
@@ -90,7 +97,7 @@ export default async function EmployeeProfilePage({
           files={serializedApp?.files ?? []}
           driveFolder={serializedApp?.driveFolder ?? null}
         />
-        <EthicsTab />
+        <EthicsTab reports={serializedEthics} employeeId={id} />
         <AuditLogTab auditLogs={serializedLogs} />
       </ProfileTabs>
     </div>

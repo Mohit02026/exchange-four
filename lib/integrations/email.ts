@@ -400,3 +400,33 @@ export async function sendSurveyHandlingAlert(params: {
   if (error) throw new Error(`Resend error (survey handling alert): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendEthicsThresholdAlert(params: {
+  subjectType: 'EMPLOYEE' | 'APPLICANT'
+  count: number
+}): Promise<string | null> {
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('nicola@exchangefour.com'),
+    subject: `Ethics Alert — ${params.count} Reports on One ${params.subjectType === 'EMPLOYEE' ? 'Employee' : 'Applicant'}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#dc2626">Ethics Report Threshold Reached</h2>
+        <p style="font-size:15px">
+          <strong>${params.count} ethics reports</strong> have been filed against one
+          ${params.subjectType === 'EMPLOYEE' ? 'employee' : 'applicant'}.
+          This exceeds the 5-report threshold and requires immediate review.
+        </p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/ethics" style="background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            View Ethics Reports →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (ethics threshold alert): ${error.message}`)
+  return data?.id ?? null
+}
