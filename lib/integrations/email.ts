@@ -497,3 +497,67 @@ export async function sendCorrectionExecutiveApproval(params: {
   if (error) throw new Error(`Resend error (correction exec approval): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendOffboardingStarted(params: {
+  employeeName: string
+  reason: string
+  finalDay: string | null
+  caseId: string
+}): Promise<string | null> {
+  const reasonLabel = params.reason.charAt(0) + params.reason.slice(1).toLowerCase()
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('nicola@exchangefour.com'),
+    subject: `Offboarding Started — ${params.employeeName} (${reasonLabel})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#374151">Offboarding Case Opened</h2>
+        <p style="font-size:15px">An offboarding case has been opened for <strong>${params.employeeName}</strong>.</p>
+        <p style="font-size:14px;color:#374151"><strong>Reason:</strong> ${reasonLabel}</p>
+        ${params.finalDay ? `<p style="font-size:14px;color:#374151"><strong>Final day:</strong> ${params.finalDay}</p>` : ''}
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/offboarding/${params.caseId}" style="background:#374151;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            View Offboarding Checklist →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (offboarding started): ${error.message}`)
+  return data?.id ?? null
+}
+
+export async function sendOffboardingCeoApproval(params: {
+  employeeName: string
+  reason: string
+  token: string
+}): Promise<string | null> {
+  const reasonLabel = params.reason.charAt(0) + params.reason.slice(1).toLowerCase()
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('avi@exchangefour.com'),
+    subject: `CEO Approval Required — Offboarding of ${params.employeeName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>CEO Approval Required — Offboarding</h2>
+        <p style="font-size:15px">HR has initiated offboarding for <strong>${params.employeeName}</strong> and requires your approval to proceed.</p>
+        <p style="font-size:14px;color:#374151"><strong>Reason:</strong> ${reasonLabel}</p>
+        <div style="margin-top:24px;display:flex;gap:12px">
+          <a href="${BASE_URL}/approve/offboarding/${params.token}?decision=APPROVED" style="background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Approve →
+          </a>
+          &nbsp;&nbsp;
+          <a href="${BASE_URL}/approve/offboarding/${params.token}?decision=REJECTED" style="background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Reject
+          </a>
+        </div>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (offboarding CEO approval): ${error.message}`)
+  return data?.id ?? null
+}

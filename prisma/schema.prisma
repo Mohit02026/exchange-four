@@ -126,6 +126,28 @@ enum CorrectionAction {
   TRANSFER_DEMOTION_PROMOTION
 }
 
+enum OffboardingReason {
+  VOLUNTARY
+  TERMINATION
+  REDUNDANCY
+  TRANSFER
+}
+
+enum OffboardingStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETE
+}
+
+enum OffboardingOwner {
+  HR
+  SENIOR
+  IT
+  ADMIN
+  TREASURY
+  SECURITY
+}
+
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
@@ -141,9 +163,11 @@ model User {
   applicant        Applicant?
   employee         Employee?
   auditLogs        AuditLog[]
-  ethicsReported       EthicsReport[]      @relation("EthicsReporter")
-  ethicsHandled        EthicsReport[]      @relation("EthicsHandler")
-  submittedCorrections CorrectionHandling[] @relation("CorrectionSubmitter")
+  ethicsReported           EthicsReport[]             @relation("EthicsReporter")
+  ethicsHandled            EthicsReport[]             @relation("EthicsHandler")
+  submittedCorrections     CorrectionHandling[]       @relation("CorrectionSubmitter")
+  offboardingCasesCreated  OffboardingCase[]          @relation("OffboardingCreator")
+  offboardingItemsCompleted OffboardingChecklistItem[] @relation("OffboardingItemCompleter")
 }
 
 // ─── Org Board ───────────────────────────────────────────────────────────────
@@ -400,8 +424,9 @@ model Employee {
   newHireSurveys  NewHireSurvey[]
   trainingPlan    TrainingPlan?
   statistics      Statistic[]
-  ethicsReports   EthicsReport[]      @relation("EthicsSubject")
-  corrections     CorrectionHandling[] @relation("CorrectionSubject")
+  ethicsReports    EthicsReport[]       @relation("EthicsSubject")
+  corrections      CorrectionHandling[] @relation("CorrectionSubject")
+  offboardingCase  OffboardingCase?
 }
 
 model OnboardingPlan {
@@ -554,6 +579,42 @@ model EthicsReport {
   fileDestination   String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+}
+
+// ─── Phase 19: Offboarding ───────────────────────────────────────────────────
+
+model OffboardingCase {
+  id                  String            @id @default(cuid())
+  employeeId          String            @unique
+  employee            Employee          @relation(fields: [employeeId], references: [id])
+  reason              OffboardingReason
+  finalDay            DateTime?
+  requiresCeoApproval Boolean           @default(false)
+  ceoApprovalToken    String?           @unique
+  ceoApprovalTokenUsed Boolean          @default(false)
+  ceoApproved         Boolean?
+  ceoDecidedAt        DateTime?
+  status              OffboardingStatus @default(OPEN)
+  exitSummary         String?
+  createdById         String
+  createdBy           User              @relation("OffboardingCreator", fields: [createdById], references: [id])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  items OffboardingChecklistItem[]
+}
+
+model OffboardingChecklistItem {
+  id            String           @id @default(cuid())
+  caseId        String
+  case          OffboardingCase  @relation(fields: [caseId], references: [id])
+  owner         OffboardingOwner
+  item          String
+  completedAt   DateTime?
+  completedById String?
+  completedBy   User?            @relation("OffboardingItemCompleter", fields: [completedById], references: [id])
+  notes         String?
+  createdAt     DateTime         @default(now())
 }
 
 // ─── Phase 18: Corrections ───────────────────────────────────────────────────

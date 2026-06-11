@@ -3,14 +3,16 @@ export const dynamic = 'force-dynamic'
 import { getHRStats } from '@/lib/services/stats'
 import { getOpenCount, getEthicsAlerts } from '@/lib/services/ethics'
 import { getOpenCorrectionCount } from '@/lib/services/corrections'
+import { getActiveCaseCount } from '@/lib/services/offboarding'
 import Link from 'next/link'
 
 export default async function HRDashboardPage() {
-  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections] = await Promise.all([
+  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections, activeOffboarding] = await Promise.all([
     getHRStats(),
     getOpenCount(),
     getEthicsAlerts(),
     getOpenCorrectionCount(),
+    getActiveCaseCount(),
   ])
 
   const ethicsAlertCount = ethicsAlerts.employeeAlerts.length + ethicsAlerts.applicantAlerts.length
@@ -51,6 +53,27 @@ export default async function HRDashboardPage() {
         <KPICard label="Interviews Scheduled" value={stats.interviewsScheduled} color="#16a34a" />
         <KPICard label="Employees Hired" value={stats.onboarding.employees} color="#7c3aed" />
       </div>
+
+      {/* Offboarding banner */}
+      {activeOffboarding > 0 && (
+        <div style={{
+          background: '#f9fafb',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          padding: '12px 20px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ fontSize: 14, color: '#374151', fontWeight: 600 }}>
+            {activeOffboarding} offboarding case{activeOffboarding !== 1 ? 's' : ''} in progress
+          </span>
+          <Link href="/hr/offboarding" style={{ fontSize: 13, color: '#374151', textDecoration: 'none', fontWeight: 600 }}>
+            View →
+          </Link>
+        </div>
+      )}
 
       {/* Corrections alert banner */}
       {openCorrections > 0 && (
