@@ -34,6 +34,7 @@ export default async function HRLayout({ children }: { children: React.ReactNode
             { href: '/hr/corrections', label: 'Corrections' },
             { href: '/hr/offboarding', label: 'Offboarding' },
             { href: '/hr/ethics', label: 'Ethics' },
+            { href: '/hr/reports/weekly', label: 'Weekly Report' },
           ].map(({ href, label }) => (
             <Link
               key={href}

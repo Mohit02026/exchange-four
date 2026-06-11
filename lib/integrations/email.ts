@@ -561,3 +561,117 @@ export async function sendOffboardingCeoApproval(params: {
   if (error) throw new Error(`Resend error (offboarding CEO approval): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendWeeklyReport(params: {
+  report: {
+    generatedAt: string
+    weekStart: string
+    weekEnd: string
+    thisWeek: { newApplications: number; newHires: number; interviewsCompleted: number }
+    pipeline: { submitted: number; underReview: number; sentToAvi: number; hired: number }
+    awaitingAction: { pendingNicolaReview: number; pendingAviApproval: number; correctionsExecPending: number; offboardingCeoPending: number }
+    onboarding: { total: number; behind: { name: string; completedPct: number; daysSinceHire: number }[] }
+    training: { total: number; incomplete: { name: string; completedPct: number }[] }
+    ethics: { openReports: number; subjectsAtThreshold: number }
+    corrections: { open: number; pendingExec: number }
+    offboarding: { activeCases: number; pendingCeo: number }
+  }
+}): Promise<void> {
+  const r = params.report
+  const weekOf = new Date(r.weekStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const alertRows = [
+    r.awaitingAction.pendingNicolaReview > 0 && `<tr><td style="padding:6px 0;color:#374151">Pending Nicola review</td><td style="padding:6px 0;font-weight:700;color:#d97706">${r.awaitingAction.pendingNicolaReview}</td></tr>`,
+    r.awaitingAction.pendingAviApproval > 0 && `<tr><td style="padding:6px 0;color:#374151">Pending Avi approval</td><td style="padding:6px 0;font-weight:700;color:#0891b2">${r.awaitingAction.pendingAviApproval}</td></tr>`,
+    r.awaitingAction.correctionsExecPending > 0 && `<tr><td style="padding:6px 0;color:#374151">Corrections pending exec</td><td style="padding:6px 0;font-weight:700;color:#b45309">${r.awaitingAction.correctionsExecPending}</td></tr>`,
+    r.awaitingAction.offboardingCeoPending > 0 && `<tr><td style="padding:6px 0;color:#374151">Offboarding pending CEO</td><td style="padding:6px 0;font-weight:700;color:#7c3aed">${r.awaitingAction.offboardingCeoPending}</td></tr>`,
+    r.ethics.openReports > 0 && `<tr><td style="padding:6px 0;color:#374151">Open ethics reports</td><td style="padding:6px 0;font-weight:700;color:#dc2626">${r.ethics.openReports}</td></tr>`,
+    r.corrections.open > 0 && `<tr><td style="padding:6px 0;color:#374151">Open corrections</td><td style="padding:6px 0;font-weight:700;color:#dc2626">${r.corrections.open}</td></tr>`,
+  ].filter(Boolean).join('')
+
+  const behindRows = r.onboarding.behind.map(e =>
+    `<li style="font-size:13px;color:#374151;margin-bottom:4px">${e.name} — ${e.completedPct}% complete (${e.daysSinceHire} days)</li>`
+  ).join('')
+
+  const trainingRows = r.training.incomplete.map(e =>
+    `<li style="font-size:13px;color:#374151;margin-bottom:4px">${e.name} — ${e.completedPct}% complete</li>`
+  ).join('')
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1a1a1a">
+      <p style="font-size:11px;color:#9ca3af;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Exchange Four Personnel Desk</p>
+      <h2 style="margin:0 0 4px;font-size:20px">Weekly Personnel Report</h2>
+      <p style="margin:0 0 28px;font-size:13px;color:#6b7280">Week of ${weekOf}</p>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <tr style="background:#f9fafb">
+          <td style="padding:12px 16px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">This Week</td>
+          <td></td>
+        </tr>
+        <tr><td style="padding:6px 16px;color:#374151">New applications</td><td style="padding:6px 16px;font-weight:700;color:#2563eb">${r.thisWeek.newApplications}</td></tr>
+        <tr><td style="padding:6px 16px;color:#374151">New hires started</td><td style="padding:6px 16px;font-weight:700;color:#16a34a">${r.thisWeek.newHires}</td></tr>
+        <tr><td style="padding:6px 16px;color:#374151">Interviews completed</td><td style="padding:6px 16px;font-weight:700;color:#059669">${r.thisWeek.interviewsCompleted}</td></tr>
+      </table>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+        <tr style="background:#f9fafb">
+          <td style="padding:12px 16px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Pipeline</td>
+          <td></td>
+        </tr>
+        <tr><td style="padding:6px 16px;color:#374151">New (unreviewed)</td><td style="padding:6px 16px;font-weight:700">${r.pipeline.submitted}</td></tr>
+        <tr><td style="padding:6px 16px;color:#374151">Under review</td><td style="padding:6px 16px;font-weight:700">${r.pipeline.underReview}</td></tr>
+        <tr><td style="padding:6px 16px;color:#374151">Sent to Avi</td><td style="padding:6px 16px;font-weight:700">${r.pipeline.sentToAvi}</td></tr>
+        <tr><td style="padding:6px 16px;color:#374151">Hired (all time)</td><td style="padding:6px 16px;font-weight:700;color:#16a34a">${r.pipeline.hired}</td></tr>
+      </table>
+
+      ${alertRows ? `
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;border:1px solid #fca5a5;border-radius:8px">
+        <tr style="background:#fef2f2">
+          <td style="padding:12px 16px;font-size:13px;color:#dc2626;font-weight:600;text-transform:uppercase;letter-spacing:0.5px" colspan="2">⚠ Requires Attention</td>
+        </tr>
+        ${alertRows}
+      </table>` : ''}
+
+      ${behindRows ? `
+      <div style="margin-bottom:24px">
+        <p style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Onboarding Behind (&lt;50% after 14 days)</p>
+        <ul style="margin:0;padding-left:20px">${behindRows}</ul>
+      </div>` : ''}
+
+      ${trainingRows ? `
+      <div style="margin-bottom:24px">
+        <p style="font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Training Incomplete</p>
+        <ul style="margin:0;padding-left:20px">${trainingRows}</ul>
+      </div>` : ''}
+
+      <div style="margin-bottom:24px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr style="background:#f9fafb">
+            <td style="padding:12px 16px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Active Cases</td>
+            <td></td>
+          </tr>
+          <tr><td style="padding:6px 16px;color:#374151">Offboarding in progress</td><td style="padding:6px 16px;font-weight:700">${r.offboarding.activeCases}</td></tr>
+          <tr><td style="padding:6px 16px;color:#374151">Ethics reports open</td><td style="padding:6px 16px;font-weight:700">${r.ethics.openReports}</td></tr>
+          <tr><td style="padding:6px 16px;color:#374151">Corrections open</td><td style="padding:6px 16px;font-weight:700">${r.corrections.open}</td></tr>
+        </table>
+      </div>
+
+      <p style="margin-top:32px;font-size:12px;color:#9ca3af">
+        View full report: <a href="${BASE_URL}/hr/reports/weekly" style="color:#2563eb">${BASE_URL}/hr/reports/weekly</a>
+      </p>
+      <p style="font-size:12px;color:#9ca3af">Exchange Four Personnel Desk — auto-generated ${new Date(r.generatedAt).toLocaleString()}</p>
+    </div>
+  `
+
+  const recipients = ['nicola@exchangefour.com', 'avi@exchangefour.com']
+  await Promise.all(
+    recipients.map((addr) =>
+      resend.emails.send({
+        from: FROM,
+        to: to(addr),
+        subject: `Weekly Personnel Report — Week of ${weekOf}`,
+        html,
+      })
+    )
+  )
+}
