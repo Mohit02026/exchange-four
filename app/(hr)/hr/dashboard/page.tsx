@@ -2,13 +2,15 @@ export const dynamic = 'force-dynamic'
 
 import { getHRStats } from '@/lib/services/stats'
 import { getOpenCount, getEthicsAlerts } from '@/lib/services/ethics'
+import { getOpenCorrectionCount } from '@/lib/services/corrections'
 import Link from 'next/link'
 
 export default async function HRDashboardPage() {
-  const [stats, ethicsOpenCount, ethicsAlerts] = await Promise.all([
+  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections] = await Promise.all([
     getHRStats(),
     getOpenCount(),
     getEthicsAlerts(),
+    getOpenCorrectionCount(),
   ])
 
   const ethicsAlertCount = ethicsAlerts.employeeAlerts.length + ethicsAlerts.applicantAlerts.length
@@ -49,6 +51,27 @@ export default async function HRDashboardPage() {
         <KPICard label="Interviews Scheduled" value={stats.interviewsScheduled} color="#16a34a" />
         <KPICard label="Employees Hired" value={stats.onboarding.employees} color="#7c3aed" />
       </div>
+
+      {/* Corrections alert banner */}
+      {openCorrections > 0 && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fcd34d',
+          borderRadius: 8,
+          padding: '12px 20px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ fontSize: 14, color: '#b45309', fontWeight: 600 }}>
+            ⚠ {openCorrections} open correction{openCorrections !== 1 ? 's' : ''} require attention
+          </span>
+          <Link href="/hr/corrections" style={{ fontSize: 13, color: '#b45309', textDecoration: 'none', fontWeight: 600 }}>
+            Review →
+          </Link>
+        </div>
+      )}
 
       {/* Ethics alert banner */}
       {(ethicsOpenCount > 0 || ethicsAlertCount > 0) && (

@@ -430,3 +430,70 @@ export async function sendEthicsThresholdAlert(params: {
   if (error) throw new Error(`Resend error (ethics threshold alert): ${error.message}`)
   return data?.id ?? null
 }
+
+export async function sendCorrectionFiled(params: {
+  employeeName: string
+  severity: string
+  incident: string
+  correctionId: string
+}): Promise<string | null> {
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('nicola@exchangefour.com'),
+    subject: `New Correction Filed — ${params.employeeName} (${params.severity})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#b45309">Correction Filed</h2>
+        <p style="font-size:15px">A new correction has been filed for <strong>${params.employeeName}</strong>.</p>
+        <p style="font-size:14px;color:#374151"><strong>Severity:</strong> ${params.severity}</p>
+        <p style="font-size:14px;color:#374151"><strong>Incident:</strong> ${params.incident.slice(0, 200)}${params.incident.length > 200 ? '…' : ''}</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/corrections/${params.correctionId}" style="background:#b45309;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Review Correction →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (correction filed): ${error.message}`)
+  return data?.id ?? null
+}
+
+export async function sendCorrectionExecutiveApproval(params: {
+  employeeName: string
+  action: string
+  incident: string
+  token: string
+}): Promise<string | null> {
+  const actionLabel = params.action.replace(/_/g, ' ').toLowerCase()
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: to('avi@exchangefour.com'),
+    subject: `Executive Approval Required — ${actionLabel} for ${params.employeeName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Executive Approval Required</h2>
+        <p style="font-size:15px">
+          A correction for <strong>${params.employeeName}</strong> requires your approval before proceeding.
+        </p>
+        <p style="font-size:14px;color:#374151"><strong>Proposed action:</strong> ${actionLabel}</p>
+        <p style="font-size:14px;color:#374151"><strong>Incident:</strong> ${params.incident.slice(0, 200)}${params.incident.length > 200 ? '…' : ''}</p>
+        <div style="margin-top:24px;display:flex;gap:12px">
+          <a href="${BASE_URL}/approve/correction/${params.token}?decision=APPROVED" style="background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Approve →
+          </a>
+          &nbsp;&nbsp;
+          <a href="${BASE_URL}/approve/correction/${params.token}?decision=REJECTED" style="background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Reject
+          </a>
+        </div>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+  if (error) throw new Error(`Resend error (correction exec approval): ${error.message}`)
+  return data?.id ?? null
+}

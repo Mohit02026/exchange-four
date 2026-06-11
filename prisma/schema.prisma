@@ -102,6 +102,30 @@ enum EthicsStatus {
   FILED
 }
 
+enum CorrectionSeverity {
+  MINOR
+  MODERATE
+  SERIOUS
+  CRITICAL
+}
+
+enum CorrectionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ESCALATED
+}
+
+enum CorrectionAction {
+  TRAINING_ONLY
+  VERBAL_WARNING
+  WRITTEN_WARNING
+  FINAL_WARNING
+  SUSPENSION
+  TERMINATION_RECOMMENDATION
+  TRANSFER_DEMOTION_PROMOTION
+}
+
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
@@ -117,8 +141,9 @@ model User {
   applicant        Applicant?
   employee         Employee?
   auditLogs        AuditLog[]
-  ethicsReported   EthicsReport[] @relation("EthicsReporter")
-  ethicsHandled    EthicsReport[] @relation("EthicsHandler")
+  ethicsReported       EthicsReport[]      @relation("EthicsReporter")
+  ethicsHandled        EthicsReport[]      @relation("EthicsHandler")
+  submittedCorrections CorrectionHandling[] @relation("CorrectionSubmitter")
 }
 
 // ─── Org Board ───────────────────────────────────────────────────────────────
@@ -375,7 +400,8 @@ model Employee {
   newHireSurveys  NewHireSurvey[]
   trainingPlan    TrainingPlan?
   statistics      Statistic[]
-  ethicsReports   EthicsReport[] @relation("EthicsSubject")
+  ethicsReports   EthicsReport[]      @relation("EthicsSubject")
+  corrections     CorrectionHandling[] @relation("CorrectionSubject")
 }
 
 model OnboardingPlan {
@@ -528,6 +554,34 @@ model EthicsReport {
   fileDestination   String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+}
+
+// ─── Phase 18: Corrections ───────────────────────────────────────────────────
+
+model CorrectionHandling {
+  id                       String             @id @default(cuid())
+  employeeId               String
+  employee                 Employee           @relation("CorrectionSubject", fields: [employeeId], references: [id])
+  submittedById            String
+  submittedBy              User               @relation("CorrectionSubmitter", fields: [submittedById], references: [id])
+  incident                 String
+  policyInvolved           String?
+  correctionRequested      String
+  trainingAssigned         String?
+  employeeResponse         String?
+  hrNotes                  String?
+  severity                 CorrectionSeverity @default(MINOR)
+  action                   CorrectionAction?
+  followUpDate             DateTime?
+  resolution               String?
+  status                   CorrectionStatus   @default(OPEN)
+  requiresExecutiveApproval Boolean           @default(false)
+  executiveDecision        String?
+  executiveDecidedAt       DateTime?
+  executiveToken           String?            @unique
+  executiveTokenUsed       Boolean            @default(false)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 }
 
 // ─── Events & Audit ──────────────────────────────────────────────────────────

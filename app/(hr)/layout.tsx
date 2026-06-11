@@ -31,6 +31,7 @@ export default async function HRLayout({ children }: { children: React.ReactNode
             { href: '/hr/onboarding', label: 'Onboarding' },
             { href: '/hr/training', label: 'Training' },
             { href: '/hr/statistics', label: 'Statistics' },
+            { href: '/hr/corrections', label: 'Corrections' },
             { href: '/hr/ethics', label: 'Ethics' },
           ].map(({ href, label }) => (
             <Link

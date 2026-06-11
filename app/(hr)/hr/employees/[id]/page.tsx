@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { getReportsForSubject } from '@/lib/services/ethics'
+import { getCorrectionsForEmployee } from '@/lib/services/corrections'
 import EmployeeHeader from '@/components/hr/EmployeeHeader'
 import ProfileTabs from '@/components/hr/ProfileTabs'
 import OnboardingTab from '@/components/hr/tabs/OnboardingTab'
@@ -11,6 +12,7 @@ import SurveysTab from '@/components/hr/tabs/SurveysTab'
 import FilesTab from '@/components/hr/tabs/FilesTab'
 import AuditLogTab from '@/components/hr/tabs/AuditLogTab'
 import EthicsTab from '@/components/hr/tabs/EthicsTab'
+import CorrectionsTab from '@/components/hr/tabs/CorrectionsTab'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,21 +63,25 @@ export default async function EmployeeProfilePage({
   })
   const hasEthicsAccess = currentUser?.ethicsAccess ?? false
 
-  const ethicsReports = await getReportsForSubject({
-    subjectEmployeeId: id,
-    hasEthicsAccess,
-  })
+  const [ethicsReports, corrections] = await Promise.all([
+    getReportsForSubject({ subjectEmployeeId: id, hasEthicsAccess }),
+    getCorrectionsForEmployee(id),
+  ])
 
   const serialized = JSON.parse(JSON.stringify(employee))
   const serializedApp = application ? JSON.parse(JSON.stringify(application)) : null
   const serializedLogs = JSON.parse(JSON.stringify(auditLogs))
   const serializedEthics = JSON.parse(JSON.stringify(ethicsReports))
+  const serializedCorrections = JSON.parse(JSON.stringify(corrections))
+
+  const openCorrections = corrections.filter(c => c.status !== 'RESOLVED').length
 
   const tabs = [
     { key: 'onboarding', label: 'Onboarding' },
     { key: 'surveys', label: 'Surveys' },
     { key: 'training', label: 'Training' },
     { key: 'statistics', label: 'Statistics' },
+    { key: 'corrections', label: `Corrections${openCorrections > 0 ? ` (${openCorrections})` : ''}` },
     { key: 'files', label: 'Files' },
     { key: 'ethics', label: 'Ethics File', hidden: !hasEthicsAccess },
     { key: 'audit', label: 'Audit Log' },
@@ -93,6 +99,7 @@ export default async function EmployeeProfilePage({
         <SurveysTab surveys={serialized.newHireSurveys} />
         <TrainingTab trainingPlan={serialized.trainingPlan} employeeId={id} />
         <StatisticsProfileTab statistics={serialized.statistics} />
+        <CorrectionsTab corrections={serializedCorrections} employeeId={id} />
         <FilesTab
           files={serializedApp?.files ?? []}
           driveFolder={serializedApp?.driveFolder ?? null}
