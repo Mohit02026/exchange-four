@@ -170,7 +170,7 @@ describe('POST /api/training/[employeeId]/task', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.task.functionName).toBe('Handle invoices')
-    expect(body.task.status).toBe('NOT_STARTED')
+    expect(body.task.status).toBe('IN_PROGRESS')
   })
 })
 
@@ -192,12 +192,12 @@ describe('PATCH /api/training/[employeeId]/task/[taskId]', () => {
     const { task } = await taskRes.json()
 
     const res = await patchTask(
-      makePatch(`http://localhost:3001/api/training/${employee.id}/task/${task.id}`, { status: 'COMPLETED' }),
+      makePatch(`http://localhost:3001/api/training/${employee.id}/task/${task.id}`, { status: 'PASSED' }),
       makeTaskParams(employee.id, task.id),
     )
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.task.status).toBe('COMPLETED')
+    expect(body.task.status).toBe('PASSED')
   })
 
   it('returns 422 for invalid status value', async () => {
