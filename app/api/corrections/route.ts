@@ -8,7 +8,6 @@ import { CorrectionAction } from '@/lib/generated/prisma/client'
 
 const createSchema = z.object({
   employeeId: z.string(),
-  submittedById: z.string(),
   incident: z.string().min(10),
   policyInvolved: z.string().optional(),
   correctionRequested: z.string().min(5),
@@ -38,6 +37,7 @@ export async function POST(req: NextRequest) {
   const { followUpDate, ...rest } = parsed.data
   const correction = await createCorrection({
     ...rest,
+    submittedById: session.user.id,
     followUpDate: followUpDate ? new Date(followUpDate) : undefined,
   })
 

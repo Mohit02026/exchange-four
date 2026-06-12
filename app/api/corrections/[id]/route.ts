@@ -36,10 +36,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const { followUpDate, ...rest } = parsed.data
-  const correction = await updateCorrection(id, {
-    ...rest,
-    followUpDate: followUpDate === null ? null : followUpDate ? new Date(followUpDate) : undefined,
-  })
+  let correction
+  try {
+    correction = await updateCorrection(id, {
+      ...rest,
+      followUpDate: followUpDate === null ? null : followUpDate ? new Date(followUpDate) : undefined,
+    })
+  } catch (e: unknown) {
+    const code = (e as { code?: string }).code
+    if (code === 'P2025') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    throw e
+  }
 
   return NextResponse.json({ correction: JSON.parse(JSON.stringify(correction)) })
 }

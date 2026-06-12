@@ -29,11 +29,18 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const { finalDay, ...rest } = parsed.data
-  const offboardingCase = await createOffboardingCase({
-    ...rest,
-    finalDay: finalDay ? new Date(finalDay) : undefined,
-    createdById: session.user.id,
-  })
+  let offboardingCase
+  try {
+    offboardingCase = await createOffboardingCase({
+      ...rest,
+      finalDay: finalDay ? new Date(finalDay) : undefined,
+      createdById: session.user.id,
+    })
+  } catch (e: unknown) {
+    const code = (e as { code?: string }).code
+    if (code === 'P2002') return NextResponse.json({ error: 'Employee already has an active offboarding case' }, { status: 409 })
+    throw e
+  }
 
   const empName = offboardingCase.employee.user.name ?? offboardingCase.employee.user.email
 
