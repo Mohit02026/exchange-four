@@ -46,7 +46,8 @@ test('Employee can navigate to survey page', async ({ page }) => {
   await page.getByLabel('Email').fill(EMP_EMAIL)
   await page.getByLabel('Password').fill(EMP_PASSWORD)
   await page.getByRole('button', { name: 'Sign In' }).click()
-  await page.waitForURL(/\/onboarding\/dashboard/, { timeout: 60000 })
+  // Login sends APPLICANT to /status; navigate directly to onboarding pages
+  await page.waitForURL(/\/status/, { timeout: 60000 })
 
   await page.goto('/onboarding/survey')
   await expect(page.getByRole('heading', { name: /Survey|Weekly/i })).toBeVisible({ timeout: 10000 })
@@ -57,7 +58,7 @@ test('Employee can navigate to daily check-in page', async ({ page }) => {
   await page.getByLabel('Email').fill(EMP_EMAIL)
   await page.getByLabel('Password').fill(EMP_PASSWORD)
   await page.getByRole('button', { name: 'Sign In' }).click()
-  await page.waitForURL(/\/onboarding\/dashboard/, { timeout: 60000 })
+  await page.waitForURL(/\/status/, { timeout: 60000 })
 
   await page.goto('/onboarding/checkin')
   await expect(page.getByRole('heading', { name: /Check.in|Daily/i })).toBeVisible({ timeout: 10000 })

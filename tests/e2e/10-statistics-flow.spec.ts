@@ -46,5 +46,6 @@ test('HR can navigate to employee statistics page', async ({ page }) => {
   await page.waitForURL(/\/hr\/dashboard/, { timeout: 60000 })
 
   await page.goto(`/hr/employees/${employeeId}/statistics`)
-  await expect(page.getByRole('heading', { name: /Statistics/i })).toBeVisible({ timeout: 10000 })
+  // Page h1 shows employee name; check the back-link text instead
+  await expect(page.getByText(/Statistics Overview/i)).toBeVisible({ timeout: 10000 })
 })

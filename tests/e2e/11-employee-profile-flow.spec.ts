@@ -46,5 +46,5 @@ test('HR can view applicant profile page', async ({ page }) => {
 
   await page.goto(`/hr/applications/${applicationId}`)
   await expect(page).toHaveURL(/\/hr\/applications\//, { timeout: 10000 })
-  await expect(page.getByText(/Profile Applicant|Profile Employee/i)).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: /Profile Applicant|Profile Employee/i })).toBeVisible({ timeout: 10000 })
 })

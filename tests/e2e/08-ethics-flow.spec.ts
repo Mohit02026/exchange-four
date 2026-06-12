@@ -31,7 +31,7 @@ test('HR can open New Ethics Report form', async ({ page }) => {
   await page.waitForURL(/\/hr\/dashboard/, { timeout: 60000 })
 
   await page.goto('/hr/ethics/new')
-  await expect(page.getByRole('heading', { name: /New Ethics Report|File Report/i })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: /File Ethics Report|New Ethics Report/i })).toBeVisible({ timeout: 10000 })
 })
 
 test('HR can file an ethics report and see it in the list', async ({ page }) => {

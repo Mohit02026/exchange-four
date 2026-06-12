@@ -10,9 +10,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-  await pool.query(`DELETE FROM "WeeklyReport" WHERE true`)
-  await pool.end()
+  // WeeklyReport is computed on demand and not persisted to DB — no cleanup needed
   await cleanupByEmails([HR_EMAIL])
 })
 
@@ -24,7 +22,7 @@ test('HR can navigate to Weekly Reports page', async ({ page }) => {
   await page.waitForURL(/\/hr\/dashboard/, { timeout: 60000 })
 
   await page.goto('/hr/reports/weekly')
-  await expect(page.getByRole('heading', { name: /Weekly Report|Executive Report/i })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: /Weekly Personnel Report|Weekly Report/i })).toBeVisible({ timeout: 10000 })
 })
 
 test('HR can generate a weekly report', async ({ page }) => {
