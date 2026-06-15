@@ -33,7 +33,9 @@ export async function POST(req: Request) {
   try {
     if (decision === 'approved') {
       const result = await finalApprove(applicationId, userId)
-      const calendlyUrl = process.env.CALENDLY_EVENT_URL ?? ''
+      const interviewToken = await createInterviewInvite(applicationId)
+      const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? ''
+      const bookingUrl = baseUrl ? `${baseUrl}/interview/${interviewToken}` : ''
 
       const [approvedEmailId, inviteEmailId] = await Promise.all([
         sendApplicantApproved({
@@ -42,18 +44,17 @@ export async function POST(req: Request) {
           reference: result.reference,
           positionTitle: null,
         }).catch(() => null),
-        calendlyUrl
+        bookingUrl
           ? sendInterviewInvite({
               to: result.applicantEmail,
               name: result.applicantName,
               reference: result.reference,
-              calendlyUrl,
+              calendlyUrl: bookingUrl,
             }).catch(() => null)
           : Promise.resolve(null),
       ])
 
       await Promise.all([
-        createInterviewInvite(applicationId),
         db.emailEvent.create({
           data: {
             applicationId,

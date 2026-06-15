@@ -67,7 +67,7 @@ export default async function ApplicationProfilePage({
         <ApplicationTab application={serialized} />
         <ReviewNotesTab review={serialized.review} />
         <CSWApprovalTab csw={serialized.csw} approvalRequest={serialized.approvalRequest} />
-        <InterviewsTab interviewEvent={serialized.interviewEvent} />
+        <InterviewsTab applicationId={id} interviewEvent={serialized.interviewEvent} />
         <FilesTab files={serialized.files} driveFolder={serialized.driveFolder} />
         <AuditLogTab auditLogs={serializedLogs} />
       </ProfileTabs>

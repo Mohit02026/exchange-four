@@ -151,22 +151,22 @@ enum OffboardingOwner {
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String
-  role          Role     @default(APPLICANT)
-  name          String?
-  ethicsAccess  Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  role         Role     @default(APPLICANT)
+  name         String?
+  ethicsAccess Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  applicant        Applicant?
-  employee         Employee?
-  auditLogs        AuditLog[]
-  ethicsReported           EthicsReport[]             @relation("EthicsReporter")
-  ethicsHandled            EthicsReport[]             @relation("EthicsHandler")
-  submittedCorrections     CorrectionHandling[]       @relation("CorrectionSubmitter")
-  offboardingCasesCreated  OffboardingCase[]          @relation("OffboardingCreator")
+  applicant                 Applicant?
+  employee                  Employee?
+  auditLogs                 AuditLog[]
+  ethicsReported            EthicsReport[]             @relation("EthicsReporter")
+  ethicsHandled             EthicsReport[]             @relation("EthicsHandler")
+  submittedCorrections      CorrectionHandling[]       @relation("CorrectionSubmitter")
+  offboardingCasesCreated   OffboardingCase[]          @relation("OffboardingCreator")
   offboardingItemsCompleted OffboardingChecklistItem[] @relation("OffboardingItemCompleter")
 }
 
@@ -204,19 +204,20 @@ model Position {
 // ─── Applicants ──────────────────────────────────────────────────────────────
 
 model Applicant {
-  id                  String        @id @default(cuid())
-  userId              String        @unique
-  user                User          @relation(fields: [userId], references: [id])
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id])
   firstName           String
   lastName            String
   correspondenceEmail String
   phone               String?
   location            String?
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  ghlContactId        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  applications   Application[]
-  ethicsReports  EthicsReport[] @relation("EthicsSubject")
+  applications  Application[]
+  ethicsReports EthicsReport[] @relation("EthicsSubject")
 }
 
 model Application {
@@ -340,13 +341,13 @@ model CSWReport {
 // ─── Approvals ───────────────────────────────────────────────────────────────
 
 model ApprovalRequest {
-  id            String            @id @default(cuid())
-  applicationId String            @unique
-  application   Application       @relation(fields: [applicationId], references: [id])
-  token         String            @unique
+  id            String      @id @default(cuid())
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  token         String      @unique
   tokenExpiry   DateTime
-  tokenUsed     Boolean           @default(false)
-  sentAt        DateTime          @default(now())
+  tokenUsed     Boolean     @default(false)
+  sentAt        DateTime    @default(now())
 
   decision ApprovalDecision?
 }
@@ -367,6 +368,7 @@ model InterviewEvent {
   id              String      @id @default(cuid())
   applicationId   String      @unique
   application     Application @relation(fields: [applicationId], references: [id])
+  interviewToken  String?     @unique
   calendlyEventId String?
   scheduledAt     DateTime?
   inviteSentAt    DateTime?
@@ -424,20 +426,20 @@ model Employee {
   newHireSurveys  NewHireSurvey[]
   trainingPlan    TrainingPlan?
   statistics      Statistic[]
-  ethicsReports    EthicsReport[]       @relation("EthicsSubject")
-  corrections      CorrectionHandling[] @relation("CorrectionSubject")
-  offboardingCase  OffboardingCase?
+  ethicsReports   EthicsReport[]       @relation("EthicsSubject")
+  corrections     CorrectionHandling[] @relation("CorrectionSubject")
+  offboardingCase OffboardingCase?
 }
 
 model OnboardingPlan {
-  id             String    @id @default(cuid())
-  employeeId     String    @unique
-  employee       Employee  @relation(fields: [employeeId], references: [id])
-  ndaSigned      Boolean   @default(false)
-  contractSigned Boolean   @default(false)
-  policiesRead   Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id             String   @id @default(cuid())
+  employeeId     String   @unique
+  employee       Employee @relation(fields: [employeeId], references: [id])
+  ndaSigned      Boolean  @default(false)
+  contractSigned Boolean  @default(false)
+  policiesRead   Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   tasks OnboardingTask[]
 }
@@ -456,16 +458,16 @@ model OnboardingTask {
 }
 
 model DailyCheckin {
-  id          String   @id @default(cuid())
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id])
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
   completedToday  String
   studiedToday    String
   productProduced String
   whatWasUnclear  String
   anyBlocks       String
   needsHelp       String
-  submittedAt DateTime @default(now())
+  submittedAt     DateTime @default(now())
 }
 
 // ─── Phase 13: New Hire Surveys ──────────────────────────────────────────────
@@ -557,49 +559,49 @@ model StatisticEntry {
 // ─── Phase 17: Ethics Reports ────────────────────────────────────────────────
 
 model EthicsReport {
-  id                String         @id @default(cuid())
-  reporterId        String
-  reporter          User           @relation("EthicsReporter", fields: [reporterId], references: [id])
-  subjectEmployeeId String?
-  subjectEmployee   Employee?      @relation("EthicsSubject", fields: [subjectEmployeeId], references: [id])
+  id                 String         @id @default(cuid())
+  reporterId         String
+  reporter           User           @relation("EthicsReporter", fields: [reporterId], references: [id])
+  subjectEmployeeId  String?
+  subjectEmployee    Employee?      @relation("EthicsSubject", fields: [subjectEmployeeId], references: [id])
   subjectApplicantId String?
-  subjectApplicant  Applicant?     @relation("EthicsSubject", fields: [subjectApplicantId], references: [id])
-  subjectType       String         // "EMPLOYEE" | "APPLICANT"
-  category          String
-  description       String
-  evidenceUrl       String?
-  witnesses         String?
-  severity          EthicsSeverity @default(LOW)
-  isSensitive       Boolean        @default(false)
-  triageNotes       String?
-  assignedHandlerId String?
-  assignedHandler   User?          @relation("EthicsHandler", fields: [assignedHandlerId], references: [id])
-  status            EthicsStatus   @default(OPEN)
-  outcome           String?
-  fileDestination   String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  subjectApplicant   Applicant?     @relation("EthicsSubject", fields: [subjectApplicantId], references: [id])
+  subjectType        String // "EMPLOYEE" | "APPLICANT"
+  category           String
+  description        String
+  evidenceUrl        String?
+  witnesses          String?
+  severity           EthicsSeverity @default(LOW)
+  isSensitive        Boolean        @default(false)
+  triageNotes        String?
+  assignedHandlerId  String?
+  assignedHandler    User?          @relation("EthicsHandler", fields: [assignedHandlerId], references: [id])
+  status             EthicsStatus   @default(OPEN)
+  outcome            String?
+  fileDestination    String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 // ─── Phase 19: Offboarding ───────────────────────────────────────────────────
 
 model OffboardingCase {
-  id                  String            @id @default(cuid())
-  employeeId          String            @unique
-  employee            Employee          @relation(fields: [employeeId], references: [id])
-  reason              OffboardingReason
-  finalDay            DateTime?
-  requiresCeoApproval Boolean           @default(false)
-  ceoApprovalToken    String?           @unique
-  ceoApprovalTokenUsed Boolean          @default(false)
-  ceoApproved         Boolean?
-  ceoDecidedAt        DateTime?
-  status              OffboardingStatus @default(OPEN)
-  exitSummary         String?
-  createdById         String
-  createdBy           User              @relation("OffboardingCreator", fields: [createdById], references: [id])
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  id                   String            @id @default(cuid())
+  employeeId           String            @unique
+  employee             Employee          @relation(fields: [employeeId], references: [id])
+  reason               OffboardingReason
+  finalDay             DateTime?
+  requiresCeoApproval  Boolean           @default(false)
+  ceoApprovalToken     String?           @unique
+  ceoApprovalTokenUsed Boolean           @default(false)
+  ceoApproved          Boolean?
+  ceoDecidedAt         DateTime?
+  status               OffboardingStatus @default(OPEN)
+  exitSummary          String?
+  createdById          String
+  createdBy            User              @relation("OffboardingCreator", fields: [createdById], references: [id])
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
   items OffboardingChecklistItem[]
 }
@@ -620,29 +622,37 @@ model OffboardingChecklistItem {
 // ─── Phase 18: Corrections ───────────────────────────────────────────────────
 
 model CorrectionHandling {
-  id                       String             @id @default(cuid())
-  employeeId               String
-  employee                 Employee           @relation("CorrectionSubject", fields: [employeeId], references: [id])
-  submittedById            String
-  submittedBy              User               @relation("CorrectionSubmitter", fields: [submittedById], references: [id])
-  incident                 String
-  policyInvolved           String?
-  correctionRequested      String
-  trainingAssigned         String?
-  employeeResponse         String?
-  hrNotes                  String?
-  severity                 CorrectionSeverity @default(MINOR)
-  action                   CorrectionAction?
-  followUpDate             DateTime?
-  resolution               String?
-  status                   CorrectionStatus   @default(OPEN)
-  requiresExecutiveApproval Boolean           @default(false)
-  executiveDecision        String?
-  executiveDecidedAt       DateTime?
-  executiveToken           String?            @unique
-  executiveTokenUsed       Boolean            @default(false)
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  id                        String             @id @default(cuid())
+  employeeId                String
+  employee                  Employee           @relation("CorrectionSubject", fields: [employeeId], references: [id])
+  submittedById             String
+  submittedBy               User               @relation("CorrectionSubmitter", fields: [submittedById], references: [id])
+  incident                  String
+  policyInvolved            String?
+  correctionRequested       String
+  trainingAssigned          String?
+  employeeResponse          String?
+  hrNotes                   String?
+  severity                  CorrectionSeverity @default(MINOR)
+  action                    CorrectionAction?
+  followUpDate              DateTime?
+  resolution                String?
+  status                    CorrectionStatus   @default(OPEN)
+  requiresExecutiveApproval Boolean            @default(false)
+  executiveDecision         String?
+  executiveDecidedAt        DateTime?
+  executiveToken            String?            @unique
+  executiveTokenUsed        Boolean            @default(false)
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+}
+
+// ─── App Settings ────────────────────────────────────────────────────────────
+
+model AppSettings {
+  id            String   @id @default("singleton")
+  emailProvider String   @default("resend")
+  updatedAt     DateTime @updatedAt
 }
 
 // ─── Events & Audit ──────────────────────────────────────────────────────────

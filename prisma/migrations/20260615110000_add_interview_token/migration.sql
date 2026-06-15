@@ -1,0 +1,1 @@
+ALTER TABLE "InterviewEvent" ADD COLUMN IF NOT EXISTS "interviewToken" TEXT UNIQUE;

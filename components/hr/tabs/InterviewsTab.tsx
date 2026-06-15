@@ -1,5 +1,11 @@
+'use client'
+
+import { useState } from 'react'
+
 interface InterviewsTabProps {
+  applicationId: string
   interviewEvent: {
+    interviewToken: string | null
     calendlyEventId: string | null
     scheduledAt: string | null
     inviteSentAt: string | null
@@ -20,48 +26,115 @@ function SurveyField({ label, value }: { label: string; value: string | null | u
   if (value == null) return null
   return (
     <div>
-      <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{String(value)}</dd>
+      <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>{label}</dt>
+      <dd style={{ fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>{String(value)}</dd>
     </div>
   )
 }
 
-export default function InterviewsTab({ interviewEvent }: InterviewsTabProps) {
+export default function InterviewsTab({ applicationId, interviewEvent }: InterviewsTabProps) {
+  const [marking, setMarking] = useState(false)
+  const [marked, setMarked] = useState(false)
+
   if (!interviewEvent) {
-    return <p className="text-sm text-gray-500">No interview scheduled yet.</p>
+    return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No interview invite sent yet.</p>
+  }
+
+  const scheduledAt = interviewEvent.scheduledAt || (marked ? new Date().toISOString() : null)
+  const bookingUrl = interviewEvent.interviewToken
+    ? `/interview/${interviewEvent.interviewToken}`
+    : null
+
+  async function markBooked() {
+    setMarking(true)
+    try {
+      await fetch('/api/interviews/mark-booked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationId }),
+      })
+      setMarked(true)
+    } finally {
+      setMarking(false)
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Calendly Event</h3>
-        <dl className="space-y-1 text-sm">
-          <div className="flex gap-2">
-            <dt className="text-gray-500 w-32">Scheduled:</dt>
-            <dd>{interviewEvent.scheduledAt ? new Date(interviewEvent.scheduledAt).toLocaleString() : '—'}</dd>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Booking status */}
+      <div style={{
+        background: 'var(--surface-raised)',
+        border: '1px solid var(--border)',
+        borderLeft: `3px solid ${scheduledAt ? '#059669' : 'var(--gold)'}`,
+        borderRadius: 'var(--radius-lg)',
+        padding: '16px 20px',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
+          Interview Booking
+        </div>
+        <dl style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+            <dt style={{ color: 'var(--text-muted)', width: 110, flexShrink: 0 }}>Invite sent:</dt>
+            <dd style={{ margin: 0, color: 'var(--text-primary)' }}>
+              {interviewEvent.inviteSentAt ? new Date(interviewEvent.inviteSentAt).toLocaleString() : '—'}
+            </dd>
           </div>
-          <div className="flex gap-2">
-            <dt className="text-gray-500 w-32">Invite sent:</dt>
-            <dd>{interviewEvent.inviteSentAt ? new Date(interviewEvent.inviteSentAt).toLocaleString() : '—'}</dd>
+          <div style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+            <dt style={{ color: 'var(--text-muted)', width: 110, flexShrink: 0 }}>Scheduled:</dt>
+            <dd style={{ margin: 0, color: scheduledAt ? '#059669' : 'var(--text-muted)', fontWeight: scheduledAt ? 600 : 400 }}>
+              {scheduledAt ? new Date(scheduledAt).toLocaleString() : 'Not booked yet'}
+            </dd>
           </div>
-          {interviewEvent.calendlyEventId && (
-            <div className="flex gap-2">
-              <dt className="text-gray-500 w-32">Event ID:</dt>
-              <dd className="font-mono text-xs">{interviewEvent.calendlyEventId}</dd>
+          {bookingUrl && (
+            <div style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+              <dt style={{ color: 'var(--text-muted)', width: 110, flexShrink: 0 }}>Booking link:</dt>
+              <dd style={{ margin: 0 }}>
+                <a href={bookingUrl} target="_blank" rel="noreferrer"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: 12, fontFamily: 'monospace' }}>
+                  /interview/{interviewEvent.interviewToken?.slice(0, 16)}…
+                </a>
+              </dd>
             </div>
           )}
         </dl>
+
+        {!scheduledAt && (
+          <div style={{ marginTop: 14 }}>
+            <button
+              onClick={markBooked}
+              disabled={marking}
+              style={{
+                padding: '7px 16px', fontSize: 12, fontWeight: 600,
+                background: marking ? 'var(--surface-muted)' : 'var(--navy-900)',
+                color: marking ? 'var(--text-muted)' : '#fff',
+                border: 'none', borderRadius: 'var(--radius-md)',
+                cursor: marking ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {marking ? 'Saving…' : 'Mark as Booked'}
+            </button>
+            <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--text-muted)' }}>
+              Use if applicant booked directly via GHL calendar
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* Post-interview survey */}
       {interviewEvent.survey ? (
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+        <div style={{
+          background: 'var(--surface-raised)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '16px 20px',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 14 }}>
             Post-Interview Survey
-            <span className="ml-2 text-xs font-normal text-gray-400">
-              submitted {new Date(interviewEvent.survey.submittedAt).toLocaleDateString()}
+            <span style={{ marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>
+              · submitted {new Date(interviewEvent.survey.submittedAt).toLocaleDateString()}
             </span>
-          </h3>
-          <dl className="space-y-3">
+          </div>
+          <dl style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <SurveyField label="How did it go?" value={interviewEvent.survey.howDidItGo} />
             <SurveyField
               label="Still interested?"
@@ -69,8 +142,15 @@ export default function InterviewsTab({ interviewEvent }: InterviewsTabProps) {
             />
             {interviewEvent.survey.excitementScore != null && (
               <div>
-                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Excitement score</dt>
-                <dd className="mt-1 text-2xl font-bold text-blue-600">{interviewEvent.survey.excitementScore}<span className="text-sm font-normal text-gray-400">/10</span></dd>
+                <dt style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>
+                  Excitement score
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <span style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-primary)' }}>
+                    {interviewEvent.survey.excitementScore}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>/10</span>
+                </dd>
               </div>
             )}
             <SurveyField label="What was clear?" value={interviewEvent.survey.whatWasClear} />
@@ -80,7 +160,7 @@ export default function InterviewsTab({ interviewEvent }: InterviewsTabProps) {
           </dl>
         </div>
       ) : (
-        <p className="text-sm text-gray-500">No survey submitted yet.</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No survey submitted yet.</p>
       )}
     </div>
   )
