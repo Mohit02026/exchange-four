@@ -3,4 +3,4 @@ installCommand = "npm install"
 buildCommand = "npx prisma generate && npm run build"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && npm run start"
+startCommand = "npx prisma migrate deploy && npx next start -p ${PORT:-3000}"
