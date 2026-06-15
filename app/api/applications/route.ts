@@ -6,6 +6,8 @@ import { generateReviewToken } from '@/lib/utils/tokens'
 import { writeAuditLog } from '@/lib/utils/audit'
 import { sendApplicantConfirmation, sendNicolaNotification } from '@/lib/integrations/email'
 import { notifyApplicationSubmitted } from '@/lib/integrations/slack'
+import { getEmailProvider } from '@/lib/services/settings'
+import { upsertGHLContact } from '@/lib/integrations/ghl-email'
 import { getApplicationQueue } from '@/lib/services/reviews'
 import { createApplicantFolder, uploadFileToDrive, deleteLocalUploads, mimeTypeForFile } from '@/lib/services/storage'
 
@@ -105,6 +107,19 @@ export async function POST(req: NextRequest) {
 
   const applicantName = `${applicant.firstName} ${applicant.lastName}`
   const reviewToken = await generateReviewToken(application.id)
+
+  // If GHL is the active provider, upsert a contact and save the ID before emails are sent
+  // so routedSend can find it. Must await — email routing reads ghlContactId from DB.
+  if ((await getEmailProvider()) === 'ghl') {
+    await upsertGHLContact({
+      firstName: applicant.firstName,
+      lastName: applicant.lastName,
+      email: applicant.correspondenceEmail,
+      phone: applicant.phone,
+    }).then((contactId) =>
+      db.applicant.update({ where: { id: applicant.id }, data: { ghlContactId: contactId } })
+    ).catch(() => null)
+  }
 
   // Email errors are non-fatal — application is already created; log null resendId.
   // Cap at 8 s so a slow/unavailable Resend endpoint never blocks the 201 response.

@@ -1,4 +1,7 @@
 import { Resend } from 'resend'
+import { db } from '@/lib/db'
+import { getEmailProvider } from '@/lib/services/settings'
+import { sendGHLEmail } from '@/lib/integrations/ghl-email'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = `Exchange Four Personnel Desk <${process.env.RESEND_FROM_EMAIL ?? 'noreply@hr.exchangefour.com'}>`
@@ -10,14 +13,63 @@ export function to(address: string): string {
   return process.env.TEST_EMAIL_OVERRIDE || address
 }
 
+// Resolve the GHL contactId for any recipient email.
+// Applicants: looked up from DB. Internal users (nicola, avi): from env vars.
+async function resolveGHLContactId(email: string): Promise<string | null> {
+  const normalized = email.toLowerCase()
+  if (normalized === 'nicola@exchangefour.com') return process.env.GHL_NICOLA_CONTACT_ID ?? null
+  if (normalized === 'avi@exchangefour.com') return process.env.GHL_AVI_CONTACT_ID ?? null
+  try {
+    const applicant = await db.applicant.findFirst({
+      where: { correspondenceEmail: email },
+      select: { ghlContactId: true },
+    })
+    return applicant?.ghlContactId ?? null
+  } catch {
+    return null
+  }
+}
+
+// Route a single email through GHL or Resend based on the active provider setting.
+// Falls back to Resend if GHL is selected but no contactId is available.
+async function routedSend(params: {
+  recipientEmail: string
+  subject: string
+  html: string
+}): Promise<string | null> {
+  const provider = await getEmailProvider()
+  const dest = to(params.recipientEmail)
+
+  if (provider === 'ghl') {
+    const contactId = await resolveGHLContactId(params.recipientEmail)
+    if (contactId) {
+      return sendGHLEmail({
+        contactId,
+        to: dest,
+        subject: params.subject,
+        html: params.html,
+      }).catch(() => null)
+    }
+    // No contactId found — fall through to Resend so email is never silently dropped
+  }
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: dest,
+    subject: params.subject,
+    html: params.html,
+  })
+  if (error) throw new Error(`Resend error: ${error.message}`)
+  return data?.id ?? null
+}
+
 export async function sendApplicantConfirmation(params: {
   to: string
   name: string
   reference: string
 }): Promise<string | null> {
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject: `Exchange Four Application Received - ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -31,8 +83,6 @@ export async function sendApplicantConfirmation(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (applicant confirmation): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendNicolaNotification(params: {
@@ -44,9 +94,8 @@ export async function sendNicolaNotification(params: {
   const reviewLink = `${BASE_URL}/hr/review/${params.reviewToken}`
   const positionLabel = params.positionTitle ?? 'General Application'
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `New Application — ${params.applicantName} — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -68,8 +117,6 @@ export async function sendNicolaNotification(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (Nicola notification): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendAviCSW(params: {
@@ -81,9 +128,8 @@ export async function sendAviCSW(params: {
   const approveLink = `${BASE_URL}/approve/${params.approveToken}`
   const positionLabel = params.positionTitle ?? 'General Application'
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('avi@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'avi@exchangefour.com',
     subject: `CSW Ready for Review — ${params.applicantName} — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -105,8 +151,6 @@ export async function sendAviCSW(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (Avi CSW): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendNicolaAviDecision(params: {
@@ -125,9 +169,8 @@ export async function sendNicolaAviDecision(params: {
     : `Avi Disapproved — ${params.applicantName} — ${params.reference}`
   const reviewLink = `${BASE_URL}/hr/applications/${params.applicationId}`
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -147,8 +190,6 @@ export async function sendNicolaAviDecision(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (Nicola decision): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendApplicantApproved(params: {
@@ -158,9 +199,8 @@ export async function sendApplicantApproved(params: {
   positionTitle: string | null
 }): Promise<string | null> {
   const positionLabel = params.positionTitle ?? 'General Application'
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject: `Congratulations — Exchange Four Application Update`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -174,8 +214,6 @@ export async function sendApplicantApproved(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (applicant approved): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendApplicantRejected(params: {
@@ -185,9 +223,8 @@ export async function sendApplicantRejected(params: {
   positionTitle: string | null
 }): Promise<string | null> {
   const positionLabel = params.positionTitle ?? 'the position'
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject: `Exchange Four Application Update — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -201,8 +238,6 @@ export async function sendApplicantRejected(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (applicant rejected): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendInterviewInvite(params: {
@@ -211,9 +246,8 @@ export async function sendInterviewInvite(params: {
   reference: string
   calendlyUrl: string
 }): Promise<string | null> {
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject: `Interview Invitation — Exchange Four — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -234,8 +268,6 @@ export async function sendInterviewInvite(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (interview invite): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendInterviewConfirmation(params: {
@@ -258,9 +290,8 @@ export async function sendInterviewConfirmation(params: {
     ? `Interview Booked — ${params.name} — ${params.reference}`
     : `Interview Confirmed — Exchange Four — ${params.reference}`
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -273,8 +304,6 @@ export async function sendInterviewConfirmation(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (interview confirmation): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendOfferLetter(params: {
@@ -300,9 +329,8 @@ export async function sendOfferLetter(params: {
         <p style="font-size:12px;color:#999;margin-top:8px">NDA · Employment Contract · Company Policies</p>`
     : `<p style="margin-top:16px">Our team will be in touch with further details about your onboarding, including your NDA, employee handbook, and first-week schedule.</p>`
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to(params.to),
+  return routedSend({
+    recipientEmail: params.to,
     subject: `Welcome to Exchange Four — ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -317,8 +345,6 @@ export async function sendOfferLetter(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (offer letter): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendCheckinSummary(params: {
@@ -332,9 +358,8 @@ export async function sendCheckinSummary(params: {
   submittedAt: Date
 }): Promise<string | null> {
   const dateStr = params.submittedAt.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `Daily Check-In: ${params.employeeName} — ${dateStr}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -360,8 +385,6 @@ export async function sendCheckinSummary(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (checkin summary): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendSurveyHandlingAlert(params: {
@@ -378,9 +401,8 @@ export async function sendSurveyHandlingAlert(params: {
     </tr>
   `).join('')
 
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `Survey Flag: ${params.employeeName} — Week ${params.weekNumber}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -397,17 +419,14 @@ export async function sendSurveyHandlingAlert(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (survey handling alert): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendEthicsThresholdAlert(params: {
   subjectType: 'EMPLOYEE' | 'APPLICANT'
   count: number
 }): Promise<string | null> {
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `Ethics Alert — ${params.count} Reports on One ${params.subjectType === 'EMPLOYEE' ? 'Employee' : 'Applicant'}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -427,8 +446,6 @@ export async function sendEthicsThresholdAlert(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (ethics threshold alert): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendCorrectionFiled(params: {
@@ -437,9 +454,8 @@ export async function sendCorrectionFiled(params: {
   incident: string
   correctionId: string
 }): Promise<string | null> {
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `New Correction Filed — ${params.employeeName} (${params.severity})`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -457,8 +473,6 @@ export async function sendCorrectionFiled(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (correction filed): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendCorrectionExecutiveApproval(params: {
@@ -468,9 +482,8 @@ export async function sendCorrectionExecutiveApproval(params: {
   token: string
 }): Promise<string | null> {
   const actionLabel = params.action.replace(/_/g, ' ').toLowerCase()
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('avi@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'avi@exchangefour.com',
     subject: `Executive Approval Required — ${actionLabel} for ${params.employeeName}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -494,8 +507,6 @@ export async function sendCorrectionExecutiveApproval(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (correction exec approval): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendOffboardingStarted(params: {
@@ -505,9 +516,8 @@ export async function sendOffboardingStarted(params: {
   caseId: string
 }): Promise<string | null> {
   const reasonLabel = params.reason.charAt(0) + params.reason.slice(1).toLowerCase()
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('nicola@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
     subject: `Offboarding Started — ${params.employeeName} (${reasonLabel})`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -525,8 +535,6 @@ export async function sendOffboardingStarted(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (offboarding started): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendOffboardingCeoApproval(params: {
@@ -535,9 +543,8 @@ export async function sendOffboardingCeoApproval(params: {
   token: string
 }): Promise<string | null> {
   const reasonLabel = params.reason.charAt(0) + params.reason.slice(1).toLowerCase()
-  const { data, error } = await resend.emails.send({
-    from: FROM,
-    to: to('avi@exchangefour.com'),
+  return routedSend({
+    recipientEmail: 'avi@exchangefour.com',
     subject: `CEO Approval Required — Offboarding of ${params.employeeName}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
@@ -558,8 +565,6 @@ export async function sendOffboardingCeoApproval(params: {
       </div>
     `,
   })
-  if (error) throw new Error(`Resend error (offboarding CEO approval): ${error.message}`)
-  return data?.id ?? null
 }
 
 export async function sendWeeklyReport(params: {
@@ -665,13 +670,6 @@ export async function sendWeeklyReport(params: {
 
   const recipients = ['nicola@exchangefour.com', 'avi@exchangefour.com']
   await Promise.all(
-    recipients.map((addr) =>
-      resend.emails.send({
-        from: FROM,
-        to: to(addr),
-        subject: `Weekly Personnel Report — Week of ${weekOf}`,
-        html,
-      })
-    )
+    recipients.map((addr) => routedSend({ recipientEmail: addr, subject: `Weekly Personnel Report — Week of ${weekOf}`, html }))
   )
 }
