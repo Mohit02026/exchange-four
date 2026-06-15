@@ -148,6 +148,43 @@ enum OffboardingOwner {
   SECURITY
 }
 
+enum ProspectSource {
+  MANUAL
+  LINKEDIN
+  REFERRAL
+  EVENT
+}
+
+enum ProspectStatus {
+  IDENTIFIED
+  CONTACTED
+  INVITE_SENT
+  APPLIED
+  NOT_INTERESTED
+  ARCHIVED
+}
+
+enum ReferenceStatus {
+  PENDING
+  REQUESTED
+  COMPLETED
+  UNREACHABLE
+  DECLINED
+}
+
+enum BGCheckStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum BGCheckResult {
+  CLEAR
+  CONSIDER
+  FAILED
+}
+
 // ─── Users & Auth ────────────────────────────────────────────────────────────
 
 model User {
@@ -199,6 +236,7 @@ model Position {
   updatedAt            DateTime       @updatedAt
 
   applications Application[]
+  prospects    Prospect[]
 }
 
 // ─── Applicants ──────────────────────────────────────────────────────────────
@@ -240,15 +278,17 @@ model Application {
   submittedAt          DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
-  files           ApplicationFile[]
-  videos          ApplicantVideo[]
-  review          ApplicantReview?
-  performiaTest   PerformiaTest?
-  csw             CSWReport?
-  approvalRequest ApprovalRequest?
-  driveFolder     DriveFolder?
-  interviewEvent  InterviewEvent?
-  emailEvents     EmailEvent[]
+  files            ApplicationFile[]
+  videos           ApplicantVideo[]
+  review           ApplicantReview?
+  performiaTest    PerformiaTest?
+  csw              CSWReport?
+  approvalRequest  ApprovalRequest?
+  driveFolder      DriveFolder?
+  interviewEvent   InterviewEvent?
+  emailEvents      EmailEvent[]
+  referenceChecks  ReferenceCheck[]
+  backgroundCheck  BackgroundCheck?
 }
 
 model ApplicationFile {
@@ -435,11 +475,14 @@ model OnboardingPlan {
   id             String   @id @default(cuid())
   employeeId     String   @unique
   employee       Employee @relation(fields: [employeeId], references: [id])
-  ndaSigned      Boolean  @default(false)
-  contractSigned Boolean  @default(false)
-  policiesRead   Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  ndaSigned        Boolean   @default(false)
+  contractSigned   Boolean   @default(false)
+  policiesRead     Boolean   @default(false)
+  ndaSignedAt      DateTime?
+  contractSignedAt DateTime?
+  policiesReadAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   tasks OnboardingTask[]
 }
@@ -645,6 +688,67 @@ model CorrectionHandling {
   executiveTokenUsed        Boolean            @default(false)
   createdAt                 DateTime           @default(now())
   updatedAt                 DateTime           @updatedAt
+}
+
+// ─── Phase 23: Prospecting ───────────────────────────────────────────────────
+
+model Prospect {
+  id            String         @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?        @unique
+  phone         String?
+  linkedinUrl   String?
+  source        ProspectSource @default(MANUAL)
+  notes         String?
+  positionId    String?
+  position      Position?      @relation(fields: [positionId], references: [id])
+  status        ProspectStatus @default(IDENTIFIED)
+  inviteSentAt  DateTime?
+  appliedAt     DateTime?
+  applicationId String?
+  createdBy     String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// ─── Phase 28: Reference & Background Checks ─────────────────────────────────
+
+model ReferenceCheck {
+  id             String          @id @default(cuid())
+  applicationId  String
+  application    Application     @relation(fields: [applicationId], references: [id])
+  refereeName    String
+  refereeTitle   String?
+  refereeCompany String?
+  refereeEmail   String
+  refereePhone   String?
+  relationship   String
+  status         ReferenceStatus @default(PENDING)
+  requestSentAt  DateTime?
+  completedAt    DateTime?
+  rating         Int?
+  notes          String?
+  wouldRehire    Boolean?
+  token          String?         @unique
+  tokenExpiry    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model BackgroundCheck {
+  id              String         @id @default(cuid())
+  applicationId   String         @unique
+  application     Application    @relation(fields: [applicationId], references: [id])
+  status          BGCheckStatus  @default(NOT_STARTED)
+  provider        String?
+  referenceNumber String?
+  completedAt     DateTime?
+  result          BGCheckResult?
+  notes           String?
+  documentKey     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 // ─── App Settings ────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import CSWApprovalTab from '@/components/hr/tabs/CSWApprovalTab'
 import InterviewsTab from '@/components/hr/tabs/InterviewsTab'
 import FilesTab from '@/components/hr/tabs/FilesTab'
 import AuditLogTab from '@/components/hr/tabs/AuditLogTab'
+import ReferencesPanel from '@/components/hr/ReferencesPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,8 @@ export default async function ApplicationProfilePage({
       csw: true,
       approvalRequest: { include: { decision: true } },
       interviewEvent: { include: { survey: true } },
+      referenceChecks: true,
+      backgroundCheck: true,
     },
   })
 
@@ -51,6 +54,7 @@ export default async function ApplicationProfilePage({
     { key: 'review', label: 'Review Notes' },
     { key: 'csw', label: 'CSW / Approval' },
     { key: 'interviews', label: 'Interviews' },
+    { key: 'references', label: 'References' },
     { key: 'files', label: 'Files' },
     { key: 'audit', label: 'Audit Log' },
   ]
@@ -67,7 +71,12 @@ export default async function ApplicationProfilePage({
         <ApplicationTab application={serialized} />
         <ReviewNotesTab review={serialized.review} />
         <CSWApprovalTab csw={serialized.csw} approvalRequest={serialized.approvalRequest} />
-        <InterviewsTab applicationId={id} interviewEvent={serialized.interviewEvent} />
+        <InterviewsTab applicationId={id} applicationStatus={serialized.status} interviewEvent={serialized.interviewEvent} />
+        <ReferencesPanel
+          applicationId={id}
+          references={serialized.referenceChecks}
+          bgCheck={serialized.backgroundCheck}
+        />
         <FilesTab files={serialized.files} driveFolder={serialized.driveFolder} />
         <AuditLogTab auditLogs={serializedLogs} />
       </ProfileTabs>

@@ -41,6 +41,15 @@ const NAV: NavGroup[] = [
     label: 'Pipeline',
     items: [
       {
+        href: '/hr/pipeline',
+        label: 'Pipeline',
+        icon: [
+          'M3 3h18v4H3z',
+          'M3 10h12v4H3z',
+          'M3 17h8v4H3z',
+        ],
+      },
+      {
         href: '/hr/applications',
         label: 'Applications',
         icon: [
@@ -54,6 +63,16 @@ const NAV: NavGroup[] = [
         icon: [
           'M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z',
           'M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2',
+        ],
+      },
+      {
+        href: '/hr/prospects',
+        label: 'Prospects',
+        icon: [
+          'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2',
+          'M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+          'M23 21v-2a4 4 0 0 0-3-3.87',
+          'M16 3.13a4 4 0 0 1 0 7.75',
         ],
       },
     ],

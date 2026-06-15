@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface InterviewsTabProps {
   applicationId: string
+  applicationStatus?: string
   interviewEvent: {
     interviewToken: string | null
     calendlyEventId: string | null
@@ -32,9 +34,34 @@ function SurveyField({ label, value }: { label: string; value: string | null | u
   )
 }
 
-export default function InterviewsTab({ applicationId, interviewEvent }: InterviewsTabProps) {
+export default function InterviewsTab({ applicationId, applicationStatus, interviewEvent }: InterviewsTabProps) {
+  const router = useRouter()
   const [marking, setMarking] = useState(false)
   const [marked, setMarked] = useState(false)
+  const [hiring, setHiring] = useState(false)
+  const [hireError, setHireError] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState('')
+  const [showHireForm, setShowHireForm] = useState(false)
+
+  async function markAsHired() {
+    setHiring(true)
+    setHireError(null)
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/hire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: startDate || undefined }),
+      })
+      if (!res.ok) {
+        const body = await res.json() as { error?: string }
+        setHireError(body.error ?? 'Failed to mark as hired')
+        return
+      }
+      router.refresh()
+    } finally {
+      setHiring(false)
+    }
+  }
 
   if (!interviewEvent) {
     return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No interview invite sent yet.</p>
@@ -119,6 +146,79 @@ export default function InterviewsTab({ applicationId, interviewEvent }: Intervi
           </div>
         )}
       </div>
+
+      {/* Mark as Hired — only when INTERVIEW_SCHEDULED */}
+      {applicationStatus === 'INTERVIEW_SCHEDULED' && (
+        <div style={{
+          background: 'var(--surface-raised)',
+          border: '1px solid var(--border)',
+          borderLeft: '3px solid #16a34a',
+          borderRadius: 'var(--radius-lg)',
+          padding: '16px 20px',
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#16a34a', marginBottom: 10 }}>
+            Ready to Hire
+          </div>
+          {!showHireForm ? (
+            <button
+              onClick={() => setShowHireForm(true)}
+              style={{
+                padding: '7px 16px', fontSize: 12, fontWeight: 600,
+                background: '#16a34a', color: '#fff',
+                border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+              }}
+            >
+              Mark as Hired
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  Start Date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{
+                    padding: '6px 10px', fontSize: 13,
+                    background: 'var(--surface-muted)', color: 'var(--text-primary)',
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+                  }}
+                />
+              </div>
+              {hireError && (
+                <p style={{ fontSize: 12, color: '#dc2626', margin: 0 }}>{hireError}</p>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={markAsHired}
+                  disabled={hiring}
+                  style={{
+                    padding: '7px 16px', fontSize: 12, fontWeight: 600,
+                    background: hiring ? 'var(--surface-muted)' : '#16a34a',
+                    color: hiring ? 'var(--text-muted)' : '#fff',
+                    border: 'none', borderRadius: 'var(--radius-md)',
+                    cursor: hiring ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {hiring ? 'Processing…' : 'Confirm Hire'}
+                </button>
+                <button
+                  onClick={() => { setShowHireForm(false); setHireError(null) }}
+                  style={{
+                    padding: '7px 16px', fontSize: 12, fontWeight: 600,
+                    background: 'transparent', color: 'var(--text-muted)',
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Post-interview survey */}
       {interviewEvent.survey ? (

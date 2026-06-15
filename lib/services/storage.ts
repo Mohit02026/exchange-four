@@ -34,6 +34,24 @@ export async function createApplicantFolder(
   }
 }
 
+// Create a logical employee folder structure in MinIO.
+// Returns { folderId, folderUrl } or null if MinIO is not configured.
+export async function createEmployeeFolder(
+  lastName: string,
+  firstName: string
+): Promise<{ folderId: string; folderUrl: string } | null> {
+  const client = getStorageClient()
+  if (!client) return null
+
+  const slug = `${lastName}-${firstName}`
+  const prefix = `employees/${slug}/`
+  const endpoint = process.env.MINIO_ENDPOINT!
+  return {
+    folderId: prefix,
+    folderUrl: `${endpoint}/${BUCKET}/${encodeURIComponent(slug)}/`,
+  }
+}
+
 // Upload a local file (relative to public/) to MinIO under folderKey.
 // Returns the MinIO public URL or null on failure.
 export async function uploadFileToDrive(

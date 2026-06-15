@@ -567,6 +567,60 @@ export async function sendOffboardingCeoApproval(params: {
   })
 }
 
+export async function sendHireConfirmationToNicola(params: {
+  applicantName: string
+  positionTitle: string | null
+  employeeId: string
+  startDate: string | null
+}): Promise<string | null> {
+  const position = params.positionTitle ?? 'General Application'
+  const startLine = params.startDate
+    ? `<p><strong>Start Date:</strong> ${params.startDate}</p>`
+    : `<p>Start date to be confirmed.</p>`
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
+    subject: `Hired — ${params.applicantName} — Onboarding Started`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#16a34a">New Hire Confirmed</h2>
+        <p><strong>${params.applicantName}</strong> has been marked as hired for <strong>${position}</strong>.</p>
+        ${startLine}
+        <p style="margin-top:16px">An onboarding plan has been created. The employee has been sent their welcome email with the acknowledge link.</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/onboarding/${params.employeeId}" style="background:#16a34a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">
+            View Onboarding Plan
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
+export async function sendAcknowledgmentComplete(params: {
+  employeeName: string
+  employeeId: string
+}): Promise<string | null> {
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
+    subject: `Documents Acknowledged — ${params.employeeName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#059669">Onboarding Documents Acknowledged</h2>
+        <p><strong>${params.employeeName}</strong> has acknowledged all onboarding documents (NDA, Employment Contract, and Company Policies).</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/onboarding/${params.employeeId}" style="background:#1a1a1a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block">
+            View Onboarding Plan
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
 export async function sendWeeklyReport(params: {
   report: {
     generatedAt: string
