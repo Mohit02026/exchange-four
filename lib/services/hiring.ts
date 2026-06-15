@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 import { writeAuditLog } from '@/lib/utils/audit'
 import { createApplicantFolder } from '@/lib/services/storage'
+import { generateNDA, generateContract, generatePolicies } from '@/lib/documents/generate'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 
 export async function markAsHired(applicationId: string, startDate?: string, hiredById?: string) {
   const application = await db.application.findUnique({
@@ -56,6 +58,14 @@ export async function markAsHired(applicationId: string, startDate?: string, hir
     return { employee, plan }
   })
 
+  // Generate onboarding documents async — non-blocking so PDF failure doesn't block hiring
+  generateAndUploadDocuments(result.employee.id, result.plan.id, {
+    firstName: applicant.firstName,
+    lastName: applicant.lastName,
+    positionTitle: application.position?.title ?? 'Not specified',
+    startDate: parsedStartDate?.toLocaleDateString('en-GB') ?? 'To be confirmed',
+  }).catch(() => null)
+
   await writeAuditLog({
     action: 'HIRED',
     entityType: 'Application',
@@ -75,4 +85,72 @@ export async function markAsHired(applicationId: string, startDate?: string, hir
     applicantName: `${applicant.firstName} ${applicant.lastName}`,
     positionTitle: application.position?.title ?? null,
   }
+}
+
+function getS3Client(): S3Client | null {
+  const endpoint = process.env.MINIO_ENDPOINT
+  const accessKeyId = process.env.MINIO_ACCESS_KEY
+  const secretAccessKey = process.env.MINIO_SECRET_KEY
+  if (!endpoint || !accessKeyId || !secretAccessKey) return null
+  return new S3Client({
+    endpoint,
+    region: 'us-east-1',
+    credentials: { accessKeyId, secretAccessKey },
+    forcePathStyle: true,
+  })
+}
+
+const BUCKET = process.env.MINIO_BUCKET ?? 'exchange-four'
+
+async function uploadToMinIO(key: string, buffer: Buffer): Promise<void> {
+  const client = getS3Client()
+  if (!client) return
+  await client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: 'application/pdf',
+    })
+  )
+}
+
+async function generateAndUploadDocuments(
+  employeeId: string,
+  planId: string,
+  {
+    firstName,
+    lastName,
+    positionTitle,
+    startDate,
+  }: { firstName: string; lastName: string; positionTitle: string; startDate: string }
+): Promise<void> {
+  const slug = `${lastName}-${firstName}`
+  const employeeName = `${firstName} ${lastName}`
+  const base = `employees/${slug}/3-onboarding-paperwork`
+
+  const [ndaBuf, contractBuf, policiesBuf] = await Promise.all([
+    generateNDA({ employeeName, position: positionTitle, startDate }),
+    generateContract({ employeeName, position: positionTitle, startDate }),
+    generatePolicies({ employeeName }),
+  ])
+
+  const ndaKey = `${base}/nda.pdf`
+  const contractKey = `${base}/contract.pdf`
+  const policiesKey = `${base}/policies.pdf`
+
+  await Promise.all([
+    uploadToMinIO(ndaKey, ndaBuf),
+    uploadToMinIO(contractKey, contractBuf),
+    uploadToMinIO(policiesKey, policiesBuf),
+  ])
+
+  await db.onboardingPlan.update({
+    where: { id: planId },
+    data: {
+      ndaDocumentKey: ndaKey,
+      contractDocumentKey: contractKey,
+      policiesDocumentKey: policiesKey,
+    },
+  })
 }

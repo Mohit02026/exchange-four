@@ -621,6 +621,124 @@ export async function sendAcknowledgmentComplete(params: {
   })
 }
 
+export async function sendOnboardingDigest(params: {
+  employeesInOnboarding: number
+  alerts: { employeeName: string; issue: string }[]
+  completedThisWeek: { name: string }[]
+}): Promise<string | null> {
+  const alertRows = params.alerts.map(a =>
+    `<tr><td style="padding:6px 0;color:#374151">${a.employeeName}</td><td style="padding:6px 0;color:#dc2626;font-size:13px">${a.issue}</td></tr>`
+  ).join('')
+  const completedNames = params.completedThisWeek.map(e => e.name).join(', ') || 'None'
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
+    subject: `Weekly Onboarding Digest — ${params.employeesInOnboarding} in Onboarding`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Onboarding Weekly Digest</h2>
+        <p><strong>Employees in onboarding:</strong> ${params.employeesInOnboarding}</p>
+        <p><strong>Completed onboarding this week:</strong> ${completedNames}</p>
+        ${alertRows ? `
+        <p style="margin-top:20px;font-weight:600;color:#dc2626">Needs Attention:</p>
+        <table style="width:100%;border-collapse:collapse">${alertRows}</table>` : '<p style="margin-top:20px;color:#16a34a">No alerts — all employees on track.</p>'}
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/onboarding" style="background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            View Onboarding →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
+export async function sendReviewScheduled(params: {
+  employeeName: string
+  reviewType: string
+  dueDate: string
+  reviewId: string
+}): Promise<string | null> {
+  const typeLabel = params.reviewType.replace('_', '-').replace('DAY', 'Day')
+  return routedSend({
+    recipientEmail: 'nicola@exchangefour.com',
+    subject: `Review Scheduled — ${params.employeeName} (${typeLabel})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Performance Review Scheduled</h2>
+        <p>A <strong>${typeLabel} review</strong> has been scheduled for <strong>${params.employeeName}</strong>.</p>
+        <p><strong>Due date:</strong> ${params.dueDate}</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/hr/reviews/${params.reviewId}" style="background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Conduct Review →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
+export async function sendDisciplinaryNotice(params: {
+  employeeEmail: string
+  employeeName: string
+  type: string
+  incidentDate: string
+  actionId: string
+}): Promise<string | null> {
+  const typeLabel = params.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  return routedSend({
+    recipientEmail: params.employeeEmail,
+    subject: `Disciplinary Notice — Exchange Four`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2 style="color:#dc2626">Disciplinary Notice</h2>
+        <p>Dear ${params.employeeName},</p>
+        <p>A formal disciplinary action has been recorded in your personnel file.</p>
+        <p><strong>Type:</strong> ${typeLabel}</p>
+        <p><strong>Incident Date:</strong> ${params.incidentDate}</p>
+        <p style="margin-top:16px">Please log in to your employee portal to review and acknowledge this notice.</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/onboarding/disciplinary" style="background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            View &amp; Acknowledge →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
+export async function sendDisciplinaryAppealToAvi(params: {
+  employeeName: string
+  type: string
+  appealNotes: string
+  token: string
+}): Promise<string | null> {
+  const typeLabel = params.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  return routedSend({
+    recipientEmail: 'avi@exchangefour.com',
+    subject: `Disciplinary Appeal — ${params.employeeName} — ${typeLabel}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:12px;color:#666;letter-spacing:1px;text-transform:uppercase">Exchange Four Personnel Desk</p>
+        <h2>Disciplinary Appeal Filed</h2>
+        <p><strong>${params.employeeName}</strong> has filed an appeal against a <strong>${typeLabel}</strong> disciplinary action.</p>
+        <p style="font-size:14px;color:#374151"><strong>Appeal notes:</strong> ${params.appealNotes.slice(0, 300)}${params.appealNotes.length > 300 ? '…' : ''}</p>
+        <p style="margin-top:16px">Please review and provide your decision to HR.</p>
+        <p style="margin-top:24px">
+          <a href="${BASE_URL}/approve/disciplinary/${params.token}" style="background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
+            Review Appeal →
+          </a>
+        </p>
+        <p style="margin-top:32px;color:#666;font-size:13px">Exchange Four Personnel Desk</p>
+      </div>
+    `,
+  })
+}
+
 export async function sendWeeklyReport(params: {
   report: {
     generatedAt: string

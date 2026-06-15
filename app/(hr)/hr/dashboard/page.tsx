@@ -4,15 +4,18 @@ import { getHRStats } from '@/lib/services/stats'
 import { getOpenCount, getEthicsAlerts } from '@/lib/services/ethics'
 import { getOpenCorrectionCount } from '@/lib/services/corrections'
 import { getActiveCaseCount } from '@/lib/services/offboarding'
+import { getOnboardingAlerts } from '@/lib/services/alerts'
+import AlertPanel from '@/components/hr/AlertPanel'
 import Link from 'next/link'
 
 export default async function HRDashboardPage() {
-  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections, activeOffboarding] = await Promise.all([
+  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections, activeOffboarding, onboardingAlerts] = await Promise.all([
     getHRStats(),
     getOpenCount(),
     getEthicsAlerts(),
     getOpenCorrectionCount(),
     getActiveCaseCount(),
+    getOnboardingAlerts(),
   ])
 
   const now = new Date()
@@ -230,6 +233,9 @@ export default async function HRDashboardPage() {
           text={`Ethics: ${ethicsOpenCount} open report${ethicsOpenCount !== 1 ? 's' : ''}${ethicsAlertCount > 0 ? ` · ${ethicsAlertCount} subject${ethicsAlertCount !== 1 ? 's' : ''} at threshold` : ''}`}
           href="/hr/ethics"
         />
+      )}
+      {onboardingAlerts.length > 0 && (
+        <AlertPanel alerts={onboardingAlerts} />
       )}
 
       {/* ── Main panels ─────────────────────────────────────── */}

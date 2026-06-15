@@ -112,6 +112,24 @@ const NAV: NavGroup[] = [
         label: 'Statistics',
         icon: ['M18 20V10', 'M12 20V4', 'M6 20v-6'],
       },
+      {
+        href: '/hr/reviews',
+        label: 'Reviews',
+        icon: [
+          'M9 11l3 3L22 4',
+          'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+        ],
+      },
+      {
+        href: '/hr/org',
+        label: 'Org Board',
+        icon: [
+          'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2',
+          'M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+          'M23 11h-6',
+          'M20 8v6',
+        ],
+      },
     ],
   },
   {
@@ -129,6 +147,15 @@ const NAV: NavGroup[] = [
           'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
           'M12 9v4',
           'M12 17h.01',
+        ],
+      },
+      {
+        href: '/hr/disciplinary',
+        label: 'Disciplinary',
+        icon: [
+          'M12 2L2 7l10 5 10-5-10-5z',
+          'M2 17l10 5 10-5',
+          'M2 12l10 5 10-5',
         ],
       },
       {

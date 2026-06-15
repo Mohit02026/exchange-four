@@ -458,17 +458,23 @@ model Employee {
   startDate      DateTime?
   slackUserId    String?
   slackInvitedAt DateTime?
+  department     String?
+  managerId      String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  onboardingPlan  OnboardingPlan?
-  dailyCheckins   DailyCheckin[]
-  newHireSurveys  NewHireSurvey[]
-  trainingPlan    TrainingPlan?
-  statistics      Statistic[]
-  ethicsReports   EthicsReport[]       @relation("EthicsSubject")
-  corrections     CorrectionHandling[] @relation("CorrectionSubject")
-  offboardingCase OffboardingCase?
+  onboardingPlan      OnboardingPlan?
+  dailyCheckins       DailyCheckin[]
+  newHireSurveys      NewHireSurvey[]
+  trainingPlan        TrainingPlan?
+  statistics          Statistic[]
+  ethicsReports       EthicsReport[]       @relation("EthicsSubject")
+  corrections         CorrectionHandling[] @relation("CorrectionSubject")
+  offboardingCase     OffboardingCase?
+  manager             Employee?            @relation("DirectReports", fields: [managerId], references: [id])
+  directReports       Employee[]           @relation("DirectReports")
+  performanceReviews  PerformanceReview[]
+  disciplinaryActions DisciplinaryAction[]
 }
 
 model OnboardingPlan {
@@ -480,9 +486,12 @@ model OnboardingPlan {
   policiesRead     Boolean   @default(false)
   ndaSignedAt      DateTime?
   contractSignedAt DateTime?
-  policiesReadAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  policiesReadAt       DateTime?
+  ndaDocumentKey       String?
+  contractDocumentKey  String?
+  policiesDocumentKey  String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   tasks OnboardingTask[]
 }
@@ -749,6 +758,85 @@ model BackgroundCheck {
   documentKey     String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+}
+
+// ─── Phase 26: Performance Reviews ──────────────────────────────────────────
+
+enum PerfReviewType {
+  DAY_30
+  DAY_60
+  DAY_90
+  ANNUAL
+}
+
+enum PerfReviewStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model PerformanceReview {
+  id               String           @id @default(cuid())
+  employeeId       String
+  employee         Employee         @relation(fields: [employeeId], references: [id])
+  type             PerfReviewType
+  status           PerfReviewStatus @default(PENDING)
+  dueDate          DateTime?
+  conductedAt      DateTime?
+  conductedById    String?
+  ratings          Json?
+  summary          String?
+  goalsSet         String?
+  employeeComments String?
+  documentKey      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// ─── Phase 29: Disciplinary Actions ─────────────────────────────────────────
+
+enum DisciplinaryType {
+  VERBAL_WARNING
+  WRITTEN_WARNING
+  FINAL_WARNING
+  PERFORMANCE_IMPROVEMENT_PLAN
+  SUSPENSION
+  TERMINATION
+}
+
+enum DisciplinaryStatus {
+  OPEN
+  ACKNOWLEDGED
+  APPEALED
+  CLOSED
+  EXPUNGED
+}
+
+model DisciplinaryAction {
+  id                     String             @id @default(cuid())
+  employeeId             String
+  employee               Employee           @relation(fields: [employeeId], references: [id])
+  type                   DisciplinaryType
+  incidentDate           DateTime
+  incidentDescription    String
+  actionTaken            String
+  outcome                String?
+  witnessName            String?
+  status                 DisciplinaryStatus @default(OPEN)
+  appealedAt             DateTime?
+  appealNotes            String?
+  appealOutcome          String?
+  resolvedAt             DateTime?
+  resolvedBy             String?
+  employeeAcknowledged   Boolean            @default(false)
+  employeeAcknowledgedAt DateTime?
+  documentKey            String?
+  appealToken            String?            @unique
+  appealTokenUsed        Boolean            @default(false)
+  createdBy              String
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 }
 
 // ─── App Settings ────────────────────────────────────────────────────────────
