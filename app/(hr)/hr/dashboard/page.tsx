@@ -5,17 +5,19 @@ import { getOpenCount, getEthicsAlerts } from '@/lib/services/ethics'
 import { getOpenCorrectionCount } from '@/lib/services/corrections'
 import { getActiveCaseCount } from '@/lib/services/offboarding'
 import { getOnboardingAlerts } from '@/lib/services/alerts'
+import { getAverageCompleteness } from '@/lib/services/completeness'
 import AlertPanel from '@/components/hr/AlertPanel'
 import Link from 'next/link'
 
 export default async function HRDashboardPage() {
-  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections, activeOffboarding, onboardingAlerts] = await Promise.all([
+  const [stats, ethicsOpenCount, ethicsAlerts, openCorrections, activeOffboarding, onboardingAlerts, avgCompleteness] = await Promise.all([
     getHRStats(),
     getOpenCount(),
     getEthicsAlerts(),
     getOpenCorrectionCount(),
     getActiveCaseCount(),
     getOnboardingAlerts(),
+    getAverageCompleteness(),
   ])
 
   const now = new Date()
@@ -237,6 +239,35 @@ export default async function HRDashboardPage() {
       {onboardingAlerts.length > 0 && (
         <AlertPanel alerts={onboardingAlerts} />
       )}
+
+      {/* ── Avg completeness ────────────────────────────────── */}
+      <div style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderLeft: '3px solid #0ea5e9',
+        borderRadius: 'var(--radius-lg)',
+        padding: '14px 20px',
+        marginBottom: 18,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        boxShadow: '0 2px 8px rgba(15,30,53,0.07)',
+      }}>
+        <span style={{
+          fontSize: 30, fontWeight: 800, color: '#0ea5e9',
+          letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
+        }}>
+          {avgCompleteness}%
+        </span>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+            Average Profile Completeness
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+            across all staff profiles · <a href="/hr/employees" style={{ color: '#0ea5e9', textDecoration: 'none', fontWeight: 500 }}>View profiles →</a>
+          </div>
+        </div>
+      </div>
 
       {/* ── Main panels ─────────────────────────────────────── */}
       <div className="panels-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 24 }}>

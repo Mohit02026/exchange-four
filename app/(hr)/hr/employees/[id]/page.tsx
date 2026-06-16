@@ -4,6 +4,8 @@ import { db } from '@/lib/db'
 import { getReportsForSubject } from '@/lib/services/ethics'
 import { getCorrectionsForEmployee } from '@/lib/services/corrections'
 import { getCaseByEmployeeId } from '@/lib/services/offboarding'
+import { getProfileCompleteness } from '@/lib/services/completeness'
+import CompletenessRing from '@/components/hr/CompletenessRing'
 import EmployeeHeader from '@/components/hr/EmployeeHeader'
 import ProfileTabs from '@/components/hr/ProfileTabs'
 import OnboardingTab from '@/components/hr/tabs/OnboardingTab'
@@ -65,10 +67,11 @@ export default async function EmployeeProfilePage({
   })
   const hasEthicsAccess = currentUser?.ethicsAccess ?? false
 
-  const [ethicsReports, corrections, offboardingCase] = await Promise.all([
+  const [ethicsReports, corrections, offboardingCase, completeness] = await Promise.all([
     getReportsForSubject({ subjectEmployeeId: id, hasEthicsAccess }),
     getCorrectionsForEmployee(id),
     getCaseByEmployeeId(id),
+    getProfileCompleteness(id),
   ])
 
   const serialized = JSON.parse(JSON.stringify(employee))
@@ -96,6 +99,30 @@ export default async function EmployeeProfilePage({
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <EmployeeHeader employee={serialized} application={serializedApp} />
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 20,
+        padding: '14px 20px', marginBottom: 20,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: '0 1px 4px rgba(15,30,53,0.06)',
+      }}>
+        <CompletenessRing score={completeness.score} size={72} strokeWidth={6} />
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+            Profile {completeness.score}% complete
+          </div>
+          {completeness.missing.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Missing: {completeness.missing.slice(0, 4).join(' · ')}
+              {completeness.missing.length > 4 && ` +${completeness.missing.length - 4} more`}
+            </div>
+          )}
+          {completeness.score === 100 && (
+            <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>All fields complete ✓</div>
+          )}
+        </div>
+      </div>
 
       <ProfileTabs tabs={tabs}>
         <OnboardingTab

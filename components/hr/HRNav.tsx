@@ -182,6 +182,11 @@ const NAV: NavGroup[] = [
           'M16 17H8',
         ],
       },
+      {
+        href: '/hr/audit',
+        label: 'Audit Log',
+        icon: ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'],
+      },
     ],
   },
   {

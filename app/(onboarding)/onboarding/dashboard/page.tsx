@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { getEmployeeByUserId } from '@/lib/services/onboarding'
+import { getProfileCompleteness } from '@/lib/services/completeness'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ export default async function OnboardingDashboardPage() {
     : null
 
   const checkins = employee.dailyCheckins ?? []
+  const completeness = await getProfileCompleteness(employee.id).catch(() => null)
 
   return (
     <div>
@@ -35,6 +37,43 @@ export default async function OnboardingDashboardPage() {
           </p>
         )}
       </div>
+
+      {/* Profile completeness */}
+      {completeness && (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #e5e7eb',
+          borderLeft: `4px solid ${completeness.score >= 80 ? '#10b981' : completeness.score >= 50 ? '#f59e0b' : '#ef4444'}`,
+          borderRadius: '10px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{ flexShrink: 0 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: '#f3f4f6',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 800,
+              color: completeness.score >= 80 ? '#10b981' : completeness.score >= 50 ? '#f59e0b' : '#ef4444',
+            }}>
+              {completeness.score}%
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>Profile Completeness</div>
+            {completeness.missing.length > 0 ? (
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Still needed: {completeness.missing.slice(0, 3).join(', ')}{completeness.missing.length > 3 ? ` +${completeness.missing.length - 3} more` : ''}
+              </div>
+            ) : (
+              <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 600 }}>Everything complete ✓</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Status cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
